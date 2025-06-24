@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js中文网：www.webgl3d.cn</title>
+</head>
+
+<body>
+    <!-- 左侧边栏 -->
+    <div id="left" style="position: absolute; top: 60px; left: 0; width: 195px; background: rgba(0,0,0,0.1); padding: 5px;">
+        <!-- 你可以在这里添加UI控件 -->
+        <h3>控制面板</h3>
+    </div>
+
+    <!-- 顶部栏 -->
+    <div style="position: absolute; top: 0; left: 0; right: 0; height: 55px; background: rgba(0,0,0,0.1); padding: 5px;">
+        <h2 style="margin: 0; color: white;">ThreeJS 渲染器</h2>
+    </div>
+
+    <!-- WebGL画布容器 -->
+    <div id="webgl" style="position: absolute; top: 60px; left: 200px;"></div>
+
+    <div class="pos">
+        <div id="red" class="bu">红</div>
+        <div id="green" class="bu" style="margin-left: 10px;">绿</div>
+    </div>
+
+    <!-- type="importmap"功能：.html文件中也能和nodejs开发环境中一样方式，引入npm安装的js库 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.174.0/build/three.module.js",
+          "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script src="./index.js" type="module">
+    </script>
+    <script>
+        const height = window.innerHeight - 60;
+        const leftElement = document.getElementById('left');
+        if (leftElement) {
+            leftElement.style.height = height + 'px';
+        }
+    </script>
+</body>
+
+</html>
+
+<style>
+  body {
+      overflow: hidden;
+      margin: 0px;
+      background-color: #222;
+      color: white;
+      font-family: Arial, sans-serif;
+  }
+  .bu{
+      background: rgba(255,255,255,0.1);
+      width: 60px;
+      height: 60px;
+      line-height: 60px;
+      text-align: center;
+      color: #fff;
+      display: inline-block;
+      border-radius: 30px;
+  }
+  .bu:hover{
+      cursor:pointer;
+  }
+  .pos{
+      position: absolute; 
+      left: 50%;
+      margin-left: -65px;
+      bottom: 100px;
+      z-index: 1000;
+  }
+</style>
