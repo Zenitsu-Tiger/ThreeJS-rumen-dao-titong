@@ -11,6 +11,10 @@ scene.add(model); //模型对象添加到场景中
 const axesHelper = new THREE.AxesHelper(100);
 scene.add(axesHelper);
 
+// 添加网格辅助线（在xz平面）
+const gridHelper = new THREE.GridHelper(200, 20);
+scene.add(gridHelper);
+
 //光源设置
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(100, 60, 50);
