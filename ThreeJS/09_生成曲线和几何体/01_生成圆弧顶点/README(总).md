@@ -729,11 +729,8 @@ export default group;
 这个参数控制的是管道圆形横截面本身的平滑度。
 
 - 作用：它决定了用多少个顶点来近似模拟一个圆形。
-
 - 影响：
-
 - 值越低：例如，如果 radialSegments 为 3，那么管道的横截面就不是圆形，而是一个三角形，最终生成的模型是一个三棱柱。如果为 4，则是一个四棱柱。
-
 - 值越高：横截面会越来越接近一个完美的圆形，整个管道看起来就越圆润。通常 8 到 12 就能得到不错的效果，更高的值在摄像机离得很近时才看得出区别。
 
 ### 总结
@@ -743,3 +740,599 @@ export default group;
 - radialSegments：控制管道管壁本身的圆滑度（横向分段）。
 
 这两个值越高，生成的模型面数（三角形数量）就越多，模型就越精细，但同时对显卡的性能消耗也越大。因此，在实际应用中需要根据模型的重要性和摄像机的远近来权衡选择合适的数值。
+
+
+
+## 二次贝塞尔曲线结合组合曲线的应用
+
+```typescript
+import * as THREE from "three";
+
+// 移除(0,0,0)点，保留4个点创建U形贝塞尔曲线
+const arr = [
+  new THREE.Vector3(50, 0, 0),    // 起始点
+  new THREE.Vector3(10, 0, 0),    // 控制点1 - 要经过
+  new THREE.Vector3(0, 0, 0),     // 控制点2
+  new THREE.Vector3(0, 0, 10),    // 控制点3 - 要经过
+  new THREE.Vector3(0, 0, 50),    // 结束点
+]
+
+// 使用CurvePath组合多段贝塞尔曲线
+const curvePath = new THREE.CurvePath();
+
+// 第一段：起始点 -> 控制点1
+const segment1 = new THREE.QuadraticBezierCurve3(
+  arr[0],  // 起始点 (50,0,0)
+  new THREE.Vector3(30, 0, 0),  // 中间控制点
+  arr[1]   // 控制点1 (10,0,0) - 经过此点
+);
+
+// 第二段：控制点1 -> 控制点3
+const segment2 = new THREE.QuadraticBezierCurve3(
+  arr[1],  // 控制点1 (10,0,0)
+  arr[2],  // 控制点2 (0,0,0) 作为控制点
+  arr[3]   // 控制点3 (0,0,10) - 经过此点
+);
+
+// 第三段：控制点3 -> 结束点
+const segment3 = new THREE.QuadraticBezierCurve3(
+  arr[3],  // 控制点3 (0,0,10)
+  new THREE.Vector3(0, 0, 30),  // 中间控制点
+  arr[4]   // 结束点 (0,0,50)
+);
+
+// 将所有段添加到CurvePath
+curvePath.add(segment1);
+curvePath.add(segment2);
+curvePath.add(segment3);
+
+// 从组合路径获取点 - 一行代码搞定！
+const pointsArr = curvePath.getPoints(60);
+
+// 创建曲线几何体
+const curveGeometry = new THREE.BufferGeometry();
+curveGeometry.setFromPoints(pointsArr);
+
+// 创建控制点几何体
+const controlPointsGeometry = new THREE.BufferGeometry();
+controlPointsGeometry.setFromPoints(arr);
+
+
+
+// 材质
+const curveMaterial = new THREE.LineBasicMaterial({ 
+  color: 0x00ffff, 
+  linewidth: 2 
+});
+
+const controlPointMaterial = new THREE.PointsMaterial({
+  color: 0xff00ff,
+  size: 8,
+  sizeAttenuation: false
+});
+
+const controlLineMaterial = new THREE.LineBasicMaterial({ 
+  color: 0xffa500, 
+  linewidth: 1,
+  transparent: true,
+  opacity: 0.5
+});
+
+// 创建对象
+const curveLine = new THREE.Line(curveGeometry, curveMaterial);
+const controlPoints = new THREE.Points(controlPointsGeometry, controlPointMaterial);
+
+const group = new THREE.Group();
+group.add(curveLine);
+group.add(controlPoints);
+
+export default group;
+
+```
+
+### 贝塞尔曲线的数学限制
+
+单条贝塞尔曲线的约束：
+
+1. 四次贝塞尔曲线只能精确经过2个点：起始点和结束点
+
+1. 中间的控制点只是"影响"曲线形状，曲线不一定经过这些点
+
+1. 高阶贝塞尔曲线难以控制：点数越多，曲线越"飘"，形状难以预测
+
+### 你的需求 vs 单条曲线的能力
+
+从你的代码看，你希望曲线经过这5个关键点：
+
+```typescript
+new THREE.Vector3(50, 0, 0),    // 起始点 ✓ 
+new THREE.Vector3(10, 0, 0),    // 要经过 ❌
+new THREE.Vector3(0, 0, 0),     // 控制点
+new THREE.Vector3(0, 0, 10),    // 要经过 ❌  
+new THREE.Vector3(0, 0, 50),    // 结束点 ✓
+```
+
+如果用一条四次贝塞尔曲线，你只能保证经过起始点和结束点，中间的点 (10,0,0) 和 (0,0,10) 曲线不会精确经过。
+
+### 分段绘制的优势
+
+```typescript
+// 你的解决方案：
+// 第一段：确保经过 (50,0,0) -> (10,0,0)
+// 第二段：确保经过 (10,0,0) -> (0,0,10)  
+// 第三段：确保经过 (0,0,10) -> (0,0,50)
+```
+
+这样每段都是二次贝塞尔曲线，可以精确控制经过的关键点。
+
+
+
+
+
+## 轮廓线
+
+```typescript
+import * as THREE from "three";
+
+const pointsArr=[
+  new THREE.Vector2(50,60),
+  new THREE.Vector2(25,0),
+  new THREE.Vector2(50,-60)
+]
+
+// const geometry=new THREE.LatheGeometry(pointsArr,30,0,Math.PI)
+// 做一个二维样条曲线
+const curve=new THREE.SplineCurve([...pointsArr])
+const arr=curve.getPoints(100)
+// 参数分别是：点数组，半径，分段数，角度
+const geometry=new THREE.LatheGeometry(arr,30)
+// geometry.setFromPoints(arr)
+const material=new THREE.MeshLambertMaterial({
+  color:0x00ffff,
+  side:THREE.DoubleSide
+})
+
+const mesh=new THREE.Mesh(geometry,material)
+
+const group = new THREE.Group();
+group.add(mesh)
+
+export default group;
+  
+```
+
+1. pointsArr (轮廓线):
+
+这定义了模型的“轮廓线”。你提供的点 [new THREE.Vector2(50,60), new THREE.Vector2(25,0), new THREE.Vector2(50,-60)] 位于XY平面上。LatheGeometry 会这样解读它们：
+
+- Y坐标：作为模型在旋转轴上的高度。
+
+- X坐标：作为模型在该高度上的半径。
+
+1. 旋转轴:
+
+LatheGeometry 默认围绕世界坐标系的 Y轴 旋转。
+
+2. 旋转方向 (逆时针):
+
+Three.js 使用的是右手坐标系。旋转遵循“右手定则”：当你用右手大拇指指向Y轴的正方向（向上）时，你其余四指弯曲的方向就是正向的旋转方向。从Y轴上方往下看，这个方向就是逆时針。
+
+
+
+3. 0 和 Math.PI (旋转角度):
+
+- 第三个参数 0 是 phiStart，代表旋转的起始角度（单位是弧度）。角度 0 对应于 X轴正方向。
+
+- 第四个参数 Math.PI 是 phiLength，代表从起始角度开始旋转的总角度。Math.PI 是180度。
+
+总结一下你的代码效果：
+
+它会从 X 轴正方向开始，将你定义的轮廓线围绕 Y 轴逆时针旋转180度，从而创建一个半开的模型。
+
+这也是为什么你在材质中设置 side: THREE.DoubleSide 是一个好习惯，因为这样你才能同时看到这个半开模型的内外两个面。如果是一个完整的、封闭的模型，通常只需要渲染外表面（side: THREE.FrontSide）。
+
+如果你想生成一个完整的闭合模型，只需要将 Math.PI 改为 Math.PI * 2 即可。
+
+### 半径
+
+对于 THREE.LatheGeometry 来说，轮廓线的半径是完全由你提供的顶点决定的，而不是一个单独的自定义参数。
+
+让我们来详细分解一下这个机制：
+
+LatheGeometry 将你传入的点数组 arr（它是由 Vector2 组成的）看作是在 XY平面 上的一个轮廓。当它围绕 Y轴 旋转生成三维模型时，它会这样解释每个点的坐标 (x, y)：
+
+- y 坐标：定义了模型在中心轴（Y轴）上的高度。
+
+- x 坐标：定义了模型在该特定高度处的半径。
+
+你用 SplineCurve 把这几个点平滑地连接成了一条曲线 arr，这条曲线上有101个点。LatheGeometry 会遍历这101个点，并将每个点的 x 值作为对应 y 高度上的半径，然后将这些半径圈平滑地连接起来，最终形成了你看到的沙漏形状。
+
+总结一下：
+
+- 顶点决定半径：模型的形状（半径在不同高度的变化）完全由输入点集的 X 坐标控制。
+
+- 没有自定义半径参数：LatheGeometry 的构造函数中没有一个像 CylinderGeometry 那样的 radius 参数。它的第二个参数 30，代表的是旋转体的周长分段数，决定了模型横截面的圆滑程度（30边形近似于圆），而不是半径。
+
+所以，你代码中之前的注释 // 参数分别是：点数组，半径，分段数，角度 其实是不准确的，正确的应该是 // 参数分别是：点数组，周长分段数。这也是为什么通过修改 pointsArr 里的 Vector2 的 x 值，你就可以自由地改变最终模型的胖瘦。
+
+
+
+
+
+## 扫描ExtrudeGeometry
+
+```js
+import * as THREE from "three";
+const shape=new THREE.Shape([
+  new THREE.Vector2(0,0),
+  new THREE.Vector2(0,10),
+  new THREE.Vector2(10,10),
+  new THREE.Vector2(10,0),
+])
+const curve=new THREE.CatmullRomCurve3([
+  new THREE.Vector3(-10,-50,-50),
+  new THREE.Vector3(10,0,0),
+  new THREE.Vector3(8,50,50),
+  new THREE.Vector3(-5,0,100)
+])
+const geometry=new THREE.ExtrudeGeometry(
+  shape,{
+    extrudePath:curve,
+    steps:100
+  }
+)
+const material=new THREE.MeshLambertMaterial({
+  color:0x00ffff,
+  side:THREE.DoubleSide,
+  // wireframe:true
+})
+const mesh=new THREE.Mesh(geometry,material)
+
+const group = new THREE.Group();
+group.add(mesh)
+
+export default group;
+  
+```
+
+### 核心概念：基于路径的拉伸
+
+要理解这段代码，首先要明白它的核心思想：将一个二维平面图形，沿着一条三维空间路径移动并“扫描”，从而形成一个三维实体。
+
+这就像是你手里有一个特定形状的印章（THREE.Shape），你蘸了墨水，然后手臂沿着一条预先画好的曲线（THREE.CatmullRomCurve3）在纸上移动，这个过程中连续不断地盖章，最终留下了一条连续的、带有你印章形状的痕迹。这个痕迹，就是我们最终的三维模型。
+
+------
+
+### 为何要结合 Shape 和 CatmullRomCurve3？
+
+这两者分别扮演着不可或缺的角色，它们共同定义了最终模型的形态。
+
+1. const shape = new THREE.Shape([...])：定义“我是谁”
+
+- THREE.Shape 用于定义一个二维轮廓，它本质上是一个封闭或不封闭的二维点集。在这个例子中，[new THREE.Vector2(0,0), new THREE.Vector2(0,10), new THREE.Vector2(10,10), new THREE.Vector2(10,0)] 定义了一个位于XY平面上的10x10的正方形。
+
+- 这个 shape 是拉伸体的横截面（Cross-section）。它决定了我们生成的“通道”长什么样子。如果把它换成一个圆形或者星形，那么最终生成的就会是圆管或者星形管道。它回答了“被拉伸的物体是什么形状？”这个问题。
+
+1. const curve = new THREE.CatmullRomCurve3([...])：定义“我去哪”
+
+- **THREE.CatmullRomCurve3 是一种3D样条曲线。它的特点是一定会平滑地穿过你提供的所有控制点。这使得它在路径规划中非常直观和常用。**
+
+- **这个 curve 是拉伸体的路径（Path）。它定义了上述 shape 在三维空间中移动的轨迹。它回答了“物体要沿着什么路径被拉伸？”这个问题。**
+
+结论：
+
+将两者结合，就是告诉 three.js：“请把这个正方形的横截面（shape），沿着这条平滑的空间曲线（curve） 进行拉伸，从而构建一个三维物体。” 如果缺少任何一个，这个操作都无法完成。没有 shape 就不知道要拉伸什么东西；没有 curve（或者其他路径定义），就不知道要往哪里拉伸。
+
+------
+
+### ExtrudeGeometry 参数的精密作用
+
+ExtrudeGeometry 是实现这一切的“魔法师”。让我们来解析它的构造函数 new THREE.ExtrudeGeometry(shape, options)。
+
+- 第一个参数 shape：这个很简单，就是我们上面定义的那个10x10的正方形轮廓。
+
+- 第二个参数 options 对象：这是控制拉伸行为的关键，我们来逐一分析其中用到的参数。
+
+- extrudePath: curve
+
+- **作用： 这是本次操作的核心参数。它明确指示 ExtrudeGeometry 不要执行默认的、沿着Z轴的直线拉伸，而是要沿着我们提供的 curve 对象所定义的空间路径进行拉伸。**
+
+- **内部机制： 当指定了 extrudePath 后，three.js 会沿着这条曲线计算一系列的标架（Frames）。你可以将每个标架想象成一个微型的、跟随曲线方向变化的局部坐标系。在每个标架的位置，three.js 都会放置一个我们定义的 shape 的副本，并根据该点标架的朝向（由曲线的切线、法线等决定）来旋转这个 shape，确保它始终“垂直”于曲线的前进方向。**
+
+- steps: 100
+
+- 作用： 这个参数定义了沿着 extrudePath 路径的分段数。它直接决定了最终模型的精细度。
+
+- 内部机制： three.js 会将整个 curve 曲线的长度等分成 100 段。这意味着它会计算出 101 个点（包括起点和终点）以及它们对应的标架。然后，它会在这 101 个位置上分别放置一个 shape 的副本。最终的几何体，是由连接相邻两个 shape 副本对应顶点的面片（通常是四边形）所组成的。
+
+- 视觉效果：
+
+- 如果 steps 值很低（比如2），你得到的会是一个由两段长方体生硬拼接而成的、棱角分明的物体。
+
+- 如果 steps 值很高（比如 100），分段就非常多，每一段都很短，所以连接起来的视觉效果就非常平滑，能够很好地还原曲线的弯曲形态，但代价是生成了更多的顶点和面，增加了渲染开销。
+
+### 总结：通道是如何生成的？
+
+1. 准备阶段： three.js 拿到了一个二维正方形 shape 和一条三维曲线 curve。
+
+1. **路径采样： 根据 steps: 100，three.js 在 curve 路径上从头到尾均匀地取了 101 个采样点。**
+
+1. 坐标变换与放置： 在每一个采样点上，three.js 计算出该点的空间位置和朝向（一个局部坐标系）。然后，它将二维的 shape 顶点变换到这个三维的局部坐标系中，相当于在路径的每一个采样点上都“盖”了一个正确朝向的正方形。
+
+1. 顶点连接与“蒙皮”： three.js 将路径上第 i 个正方形的顶点与第 i+1 个正方形的对应顶点两两相连，形成四边形面片。例如，第 i 个正方形的左上角顶点，会和第 i+1 个正方形的左上角顶点连接。这个过程沿着整个路径重复 100 次。
+
+1. 封口（可选）： ExtrudeGeometry 默认还会在通道的起始和末尾处，用我们定义的 shape 来创建两个封口的面，使得它成为一个封闭的实体。
+
+通过以上步骤，一个平滑、弯曲、横截面为正方形的通道就从数学定义变成了我们能看到的、由大量顶点和面片构成的三维几何体。
+
+
+
+# Shape轮廓
+
+```js
+import * as THREE from "three";
+
+// shape是一个二维轮廓
+const shape=new THREE.Shape()
+// currentPoint默认值是Vector2(0,0)，currentPoint是动态的当前绘制的终点
+console.log('currentPoint',shape.currentPoint);
+// currentPoint移动到(10,0)，这将成为起始点
+shape.moveTo(10,0)
+// 绘制直线线段，起点(10,0)，终点(100,0)
+shape.lineTo(100,0)
+shape.lineTo(100,100)
+shape.lineTo(10,100)
+// shape可以自动闭合，也可以手动闭合
+/* shape.lineTo(0,0)
+shape.closePath() */
+const geometry=new THREE.ShapeGeometry(shape)
+/* const geometry=new THREE.ExtrudeGeometry(shape,{
+  depth:300,
+  bevelEnabled:true,
+  bevelThickness:10,
+  bevelSize:10,
+  bevelSegments:10,
+}) */
+const material=new THREE.MeshLambertMaterial({
+  color:0x00ffff,
+
+})
+const mesh=new THREE.Mesh(geometry,material)
+
+const group = new THREE.Group();
+group.add(mesh)
+
+export default group;
+  
+```
+
+![image-20250626233759956](./README(总).assets/image-20250626233759956.png)
+
+### THREE.Shape 的核心特性：路径构建与 currentPoint
+
+THREE.Shape 与我们之前看到的、通过在构造函数中传入点数组的方式不同，它更像是一个绘图工具。你可以把它想象成在二维画布上控制一支画笔。它的所有操作都围绕一个核心属性展开：currentPoint。
+
+- currentPoint: 这可以理解为“笔尖当前所在的位置”。所有绘图指令（如lineTo）都是从这个点开始的。当你完成一个绘图指令后，currentPoint 会自动移动到新的终点，为下一次绘图做准备。
+
+现在我们来逐步分析代码，看看 Shape 的这些特性是如何被运用的：
+
+1. const shape = new THREE.Shape()
+
+- 这里我们创建了一个空的 Shape 对象。此时，你可以想象成我们拿到了一张白纸，并且画笔的笔尖 currentPoint 默认停在了原点 (0, 0)。
+
+- 代码中的 console.log('currentPoint', shape.currentPoint); 会在控制台打印出 Vector2(0, 0)，印证了这一点。
+
+1. shape.moveTo(10, 0)
+
+- 特性应用：moveTo 方法是 Shape 的一个关键指令，它的作用是“**抬起画笔**，移动到新的位置”。它只改变 currentPoint 的位置，但并不会画出任何线条。
+
+- 代码效果：执行这行代码后，笔尖 currentPoint 从 (0, 0) 被移动到了 (10, 0)。这个点将成为我们整个图形路径的起始点。
+
+1. shape.lineTo(100, 0)
+
+- 特性应用：lineTo 方法的作用是“**落下画笔**，从 currentPoint 到指定点画一条直线”。
+
+- 代码效果：
+
+- 它从当前的 currentPoint (即 (10, 0) ) 画一条直线到 (100, 0)。
+
+- 绘制完成后，currentPoint 会自动更新到这条线的终点，也就是 (100, 0)。
+
+1. shape.lineTo(100, 100) 和 shape.lineTo(10, 100)
+
+- 这两行代码重复了上述过程：
+
+- 从 (100, 0) 画一条线到 (100, 100)，然后 currentPoint 更新为 (100, 100)。
+
+- 再从 (100, 100) 画一条线到 (10, 100)，然后 currentPoint 更新为 (10, 100)。
+
+- 至此，我们已经画出了一个不封口、矩形的路径。
+
+### 图形的闭合特性
+
+接下来，我们看代码注释中的部分，这揭示了 Shape 另一个重要的特性：闭合。
+
+- `/* shape.lineTo(0,0) shape.closePath() */`
+
+- 特性应用：自动闭合 vs 手动闭合
+
+1. **自动闭合：当我们将一个未闭合的 Shape 对象传递给 THREE.ShapeGeometry 时，ShapeGeometry 会非常智能地自动将路径的最后一个点 (currentPoint) 与路径的第一个点（由 moveTo 设定的点）连接起来，形成一个封闭的多边形，然后才能进行三角化填充。**在当前代码中，即使我们什么都不做，ShapeGeometry 也会自动添加一条从 (0, 100) 到 (10, 0) 的线段。
+
+1. 手动闭合：如果你想在定义 Shape 时就明确地闭合它，有两种方式：
+
+- shape.lineTo(10, 0): 就像注释里写的，但有一个小错误，应该是 lineTo(10,0) 而不是 (0,0)，因为我们的起始点是 (10,0)。这会手动绘制最后一条边。
+
+- shape.closePath(): 这是更推荐、更语义化的方式。它会命令 Shape 自动从 currentPoint 画一条直线回到当前子路径的起始点，从而闭合形状。
+
+### 从二维轮廓到三维几何体
+
+1. const geometry = new THREE.ShapeGeometry(shape)
+
+- ShapeGeometry 接收我们用上述“绘图”方式定义好的 shape 对象。
+
+- **它的核心工作是执行一个叫三角剖分（Triangulation）的过程。它将我们定义的那个（可能是不规则的）多边形轮廓，智能地分割成若干个三角形面片。因为在计算机图形学中，GPU 最擅长处理和渲染的就是三角形。**
+
+- 最终，geometry  就成了一个由多个顶点和面组成的、可以在三维空间中渲染的平面几何体。
+
+1. 后续代码
+
+- material、mesh、group 和 export 的作用与之前的例子完全相同：为这个新生成的平面几何体赋予材质，创建一个可被场景使用的网格对象，并将其导出。
+
+### 总结
+
+这段代码通过 THREE.Shape 的 moveTo 和 lineTo 等方法，像手绘一样逐步定义了一个二维图形的边界路径。然后利用 THREE.ShapeGeometry 对这个路径轮廓进行“填充”（三角化），最终生成了一个平面的、可见的3D网格对象。整个过程完美地展示了 Shape 基于路径和 currentPoint 的构建特性，以及 ShapeGeometry 的自动闭合与填充功能。
+
+
+
+## 结合圆弧arc构建轮廓
+
+```typescript
+import * as THREE from "three";
+
+// shape是一个二维轮廓
+const shape=new THREE.Shape()
+// currentPoint移动到(150,0)
+shape.lineTo(150,0)
+// 圆弧的.arc()参数的圆心坐标是相对当前.currentPoint而言，而非坐标原点
+
+shape.arc(-50,0,50,0,Math.PI/2)
+console.log('currentPoint',shape.currentPoint);
+shape.lineTo(0,50)
+
+const geometry=new THREE.ShapeGeometry(shape)
+
+const material=new THREE.MeshLambertMaterial({
+  color:0x00ffff,
+
+})
+const mesh=new THREE.Mesh(geometry,material)
+
+const group = new THREE.Group();
+group.add(mesh)
+
+export default group;
+  
+```
+
+首先，shape.arc() 的完整参数签名是：
+
+arc( aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise )
+
+- aX, aY: 圆弧圆心的X和Y坐标。
+
+- aRadius: 圆弧的半径。
+
+- aStartAngle: 圆弧的起始角度（以弧度为单位）。
+
+- aEndAngle: 圆弧的结束角度（以弧度为单位）。
+
+- aClockwise: (可选) 布尔值，true 表示顺时针绘制，false (默认) 表示逆时针绘制。
+
+### 最关键的特性：圆心坐标是相对的
+
+就像你代码注释中指出的那样，shape.arc() 的圆心坐标 (aX, aY) 不是绝对的世界坐标，而是相对于 shape.currentPoint（笔尖当前位置）的偏移量。这是理解这段代码行为的重中之重。
+
+让我们来分解你代码中的 shape.arc(-50, 0, 50, 0, Math.PI / 2) 这一行，看看每一步发生了什么：
+
+1. 确定 currentPoint 的位置
+
+- 在调用 .arc() 之前，你执行了 shape.lineTo(150, 0)。
+
+- 因为 shape 是新创建的，它的 currentPoint 初始在 (0, 0)。
+
+- 所以 lineTo(150, 0) 会从 (0, 0) 画一条直线到 (150, 0)。
+
+- **此时，shape.currentPoint 的位置是 (150, 0)。**
+
+1. 计算圆心的绝对位置
+
+- .arc() 的前两个参数是 aX = -50 和 aY = 0。
+
+- **这表示圆心相对于 currentPoint 的偏移是 (-50, 0)。**
+
+- 因此，圆心的绝对位置是：
+
+- centerX = currentPoint.x + aX = 150 + (-50) = 100
+
+- centerY = currentPoint.y + aY = 0 + 0 = 0
+
+- 所以，three.js 将在 (100, 0) 这个点上画圆弧。
+
+1. 解析其他参数
+
+- aRadius = 50: 圆弧的半径是50。
+
+- aStartAngle = 0: 起始角度是0弧度。在数学和three.js中，0弧度角通常指向正X轴方向（3点钟方向）。
+
+- aEndAngle = Math.PI / 2: 结束角度是 π/2 弧度（即90度），指向正Y轴方向（12点钟方向）。
+
+- aClockwise 未提供，默认为 false，所以是逆时针绘制。
+
+### 整个绘制过程的可视化
+
+现在，我们可以把整个过程想象成用圆规画图：
+
+1. 笔尖落位：你的笔尖 (currentPoint) 停在 (150, 0)。
+
+1. 找圆心：arc 指令告诉你，圆规的针尖（圆心）要扎在相对于你笔尖 (-50, 0) 的位置，也就是绝对坐标 (100, 0)。
+
+1. 张开圆规：你把圆规张开，让半径等于 50。你会发现，此时笔尖正好在圆心 (100, 0) 右侧50单位处，也就是 (150, 0)，这正是起始角度为0的位置！three.js 会自动从 currentPoint 连接到圆弧的起点，但因为它们恰好是同一个点，所以不会画出多余的线。
+
+1. 画弧：你从3点钟方向（aStartAngle = 0）开始，逆时针旋转圆规，直到12点钟方向（aEndAngle = Math.PI / 2）停止。
+
+1. 更新笔尖位置：画完后，你的笔尖 (currentPoint) 会停在圆弧的终点。这个终点的坐标是：
+
+- endX = centerX + radius * cos(endAngle) = 100 + 50 * cos(PI/2) = 100 + 0 = 100
+
+- endY = centerY + radius * sin(endAngle) = 0 + 50 * sin(PI/2) = 0 + 50 = 50
+
+- 所以，执行完 .arc() 后，shape.currentPoint 更新到了 (100, 50)。
+
+总结一下：shape.arc(-50, 0, 50, 0, Math.PI / 2) 这句代码，是在 currentPoint (150, 0) 的基础上，以 (100, 0) 为圆心，50 为半径，逆时针地绘制了四分之一的圆弧，最终 currentPoint 移动到了圆弧的终点 (100, 50)。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

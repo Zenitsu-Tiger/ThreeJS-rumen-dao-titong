@@ -12,8 +12,9 @@ const axesHelper = new THREE.AxesHelper(100);
 scene.add(axesHelper);
 
 // 添加网格辅助线（在xz平面）
-const gridHelper = new THREE.GridHelper(200, 20);
-scene.add(gridHelper);
+/* const gridHelper = new THREE.GridHelper(200, 20);
+gridHelper.position.set(0, -10, 0);
+scene.add(gridHelper); */
 
 //光源设置
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
