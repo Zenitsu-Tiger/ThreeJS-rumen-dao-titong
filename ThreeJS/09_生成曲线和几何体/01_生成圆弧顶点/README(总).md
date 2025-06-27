@@ -1292,27 +1292,322 @@ arc( aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise )
 
 
 
+# 模型边界线
+
+```js
+import * as THREE from "three";
+
+// 1. 创建一个立方体几何体 (BoxGeometry)
+// BoxGeometry 定义了一个长宽高均为 50 的立方体的形状数据（顶点位置、面等）
+const geometry = new THREE.BoxGeometry(50, 50, 50);
+
+// 2. 创建一个网格材质 (MeshLambertMaterial)
+// MeshLambertMaterial 是一种对光照有反应的材质（非光亮表面）
+const material = new THREE.MeshLambertMaterial({
+  color: 0x00ffff, // 设置材质颜色为青色 (cyan)
+  transparent: true, // 开启透明效果
+  opacity: 0.5, // 设置透明度为 50%
+});
+
+// 3. 创建一个网格模型 (Mesh)
+// Mesh 是一个可见的物体，它由几何体（形状）和材质（外观）组成
+const mesh = new THREE.Mesh(geometry, material);
+
+// 4. 从立方体几何体中提取边缘 (EdgesGeometry)
+// EdgesGeometry 会分析传入的 geometry，并只保留所有边的信息，生成一个新的几何体
+// 这个新的几何体只包含顶点和足以绘制所有边框线的索引
+const edges = new THREE.EdgesGeometry(geometry);
+
+// 5. 创建用于绘制线条的材质 (LineBasicMaterial)
+// LineBasicMaterial 是一种简单的、不受光照影响的线材质
+const edgesMaterial = new THREE.LineBasicMaterial({
+  color: 0x00ffff, // 设置线条颜色为青色，与立方体颜色相同
+});
+
+// 6. 创建线段模型 (LineSegments)
+// LineSegments 用于将一系列的顶点两两相连绘制成线段
+// 这里它会使用 edges 中定义的边框信息和 edgesMaterial 的材质来创建可见的边框
+const line = new THREE.LineSegments(edges, edgesMaterial);
+
+// 7. 将线框添加到立方体网格中
+// 将 line 作为 mesh 的子对象，这样它们会一起移动、旋转和缩放
+mesh.add(line);
+
+// 8. 导出整个组合对象
+// 导出的 mesh 对象包含了半透明的立方体以及它的边框线
+export default mesh;
+
+```
+
+
+
+Three.js 中一个非常核心且强大的概念：场景图 (Scene Graph)。
+
+简单来说，答案是：因为 THREE.Mesh 不仅仅是一个“可见物体”，它更是一个“容器”或“节点”，能够包含其他的“节点”。
+
+### 详细解释：Object3D 的继承
+
+在 Three.js 中，几乎所有您能放到场景里的东西，比如 Mesh (网格)、Line (线)、Points (点)、Group (组)、Light (光源)，甚至 Camera (相机)，它们都有一个共同的“祖先”，叫做 Object3D。
+
+您可以把 Object3D 理解为一个三维空间中的节点。它有以下几个关键特性：
+
+1. 拥有自己的位置 (.position)、旋转 (.rotation) 和缩放 (.scale) 属性。
+
+1. 拥有一个 children 数组，可以用来存放其他的 Object3D 对象。
+
+1. 拥有 .add() 方法，可以方便地将其他 Object3D 对象添加到它的 children 数组中。
+
+因为 THREE.Mesh 继承自 THREE.Object3D，所以一个 Mesh 对象自然也拥有了上述所有特性。它本身可以通过 geometry 和 material 变得可见，同时它也天生就是一个可以容纳其他物体的容器。
+
+### mesh.add(line) 的实际作用
+
+当您执行 mesh.add(line) 时，发生了以下事情：
+
+1. 建立父子关系: line 对象被添加到了 mesh 对象的 children 列表中。我们称 mesh 为 line 的父对象，line 是 mesh 的子对象。
+
+1. **变换的传递: 这是最重要的一点。子对象的所有变换（位置、旋转、缩放）都是相对于其父对象的。**
+
+- 当您移动、旋转或缩放 mesh 时，它的所有子对象（这里是 line）也会跟着进行相同的变换。
+
+- 这保证了立方体的边框线会永远和立方体本身完美地贴合在一起，无论您如何操作这个立方体。您只需要管理 mesh 一个对象就够了，而不需要分别去同步 mesh 和 line 的位置，大大简化了操作。
+
+### 一个生活中的类比
+
+您可以把 mesh 想象成一个文件夹，而 line 就是这个文件夹里的一个文件。
+
+- 这个文件夹本身可以有自己的属性（比如文件夹的名字，对应 mesh 的材质和几何体）。
+
+- 您可以把文件放进文件夹里 (mesh.add(line))。
+
+- 当您移动整个文件夹时，里面的所有文件都会跟着一起被移动。
 
 
 
 
 
+## 阈值角度
+
+```typescript
+// 4. 从立方体几何体中提取边缘 (EdgesGeometry)
+// EdgesGeometry 会分析传入的 geometry，并只保留所有边的信息，生成一个新的几何体
+// 这个新的几何体只包含顶点和足以绘制所有边框线的索引
+// 第二个参数是阈值角度
+const edges = new THREE.EdgesGeometry(geometry,30);
+```
+
+我说的“侧面”，指的是圆柱体像“可乐罐罐身”一样的那个曲面部分。
+
+为了在三维世界里表现一个“圆柱体”，Three.js 实际上是用很多个小的、平坦的面拼接起来的。一个 CylinderGeometry 主要由三部分组成：
+
+1. 一个平坦的顶面圆 (Top Cap)
+
+1. 一个平坦的底面圆 (Bottom Cap)
+
+1. 一个由很多个细长的长方形拼接而成的侧面 (Side Surface)
+
+------
+
+### 最关键的一步：理解“侧面”的构成
+
+这是您理解这个问题的核心！圆柱的“光滑”侧面，其实是像用纸卷起来一样，由 30 个（您在 CylinderGeometry 中设置的最后一个参数）非常窄的长方形肩并肩地拼接起来的。
+
+*(这是一个低分段圆柱的线框图，可以清晰地看到它是由多个长方形构成的侧面)*
+
+![image-20250627133820698](./assets/image-20250627133820698.png)
+
+### thresholdAngle 的工作原理
+
+EdgesGeometry 的工作目标并不是画出模型所有的边，而是只画出那些它认为是“锐利”或“硬朗”的边缘，而忽略那些平滑曲面上的连接线。
+
+它是如何判断一条边是否“锐利”的呢？
+
+1. 它会找到共享一条边的两个相邻的面（三角形）。
+
+1. 它会计算这两个面的法线（可以理解为面的朝向）之间的夹角。
+
+1. 它将这个夹角与您提供的 thresholdAngle 进行比较。
+
+- 如果夹角 > thresholdAngle，EdgesGeometry 就认为这是一条锐利的边缘，应该被显示出来。
+
+- 如果夹角 <= thresholdAngle，它就认为这条边位于一个相对平滑的表面上，应该被忽略。
+
+### 应用到您的圆柱体上
+
+1. 创建圆柱体:
+
+- new THREE.CylinderGeometry(60, 60, 100, 30) 创建了一个侧面有 30 个分段的圆柱体。
+
+- 圆柱体的侧面是由 30 个细长的矩形面拼接而成的。
+
+- **整个圆是 360 度，所以侧面每两个相邻矩形面之间的夹角是 360 / 30 = 12 度。**
+
+1. 提取边缘:
+
+- new EdgesGeometry(geometry, 30) 使用了 30 作为 thresholdAngle。
+
+- 对于侧面的垂直线: 它们是夹角为 12 度的两个面之间的边。因为 12 <= 30，EdgesGeometry 认为这些边不够“锐利”，所以将它们全部忽略了。
+
+- 对于顶部和底部的圆形边缘: 它们是顶面/底面与侧面之间的边。一个水平的面和一个垂直的面，它们的夹角是 90 度。因为 90 > 30，EdgesGeometry 认为这是锐利的边缘，所以将它们显示了出来。
+
+结论：您设置的 thresholdAngle (30度) 太高了，以至于只有夹角为90度的顶/底边被显示，而夹角仅为12度的侧边全被过滤掉了。这就是为什么您只能看到上下两个圆圈，而没有中间的竖线。
 
 
 
+### EdgesGeometry(geometry, 30) 如何判断
+
+现在，我们来看 EdgesGeometry 是如何带着 30 度的阈值来判断这些边的：
+
+#### 1. 判断顶面/底面的圆形边缘
+
+- 我们来看顶部边缘的那一圈线。
+
+- 这条线是“顶面圆”（一个完全水平的面）和“侧面”（一个几乎垂直的长方形）的交界线。
+
+- 一个水平面和一个垂直面的夹角是多少？是 90度。
+
+- 因为 90 > 30 (阈值)，所以 EdgesGeometry 说：“这个角很锐利！我要画出来！”
+
+- 底面同理，所以上下两个圆圈都被画出来了。
+
+#### 2. 判断侧面的垂直线
+
+- 现在我们来看侧面上那些从上到下的垂直线。
+
+- 每一条垂直线，都是两个相邻的、细长的长方形之间的交界线。
+
+- **我们之前算过，整个圆周 360 度被分成了 30 份，所以这两个长方形之间的夹角只有 360 / 30 = 12 度。**
+
+- 因为 12 <= 30 (阈值)，所以 EdgesGeometry 说：“这个角太平滑了，几乎就是在同一个平面上，我不画它。”
+
+- 因此，所有 30 条侧面上的垂直线都被忽略了。
+
+```tex
+      [ 顶面 (一个水平的多边形) ]
+----------------+----------------  <-- 这个交界处的夹角是 90度 (被画出)
+                |
+       [侧面1]  |  [侧面2]        <--- 这两个侧面之间的夹'角'是 12度 (被忽略)
+       (垂直面) |  (垂直面)
+                |
+```
 
 
 
+# 顶点颜色
 
+```typescript
+import * as THREE from "three";
 
+// 1. 创建一个空的 BufferGeometry
+// BufferGeometry 是一个高效的几何体表示，它将所有数据（如顶点位置、颜色、法线）存储在"属性"中。
+const geometry = new THREE.BufferGeometry();
 
+// 2. 定义顶点位置数据
+// 创建一个 Float32Array（32位浮点数类型化数组）来存储顶点坐标。
+// 数组中的数据是按顺序排列的 (x1, y1, z1, x2, y2, z2, ...)
+// 这里定义了三个顶点，构成一个三角形。
+const vertices = new Float32Array([
+  0,
+  0,
+  0, // 第1个顶点坐标 (V0)
+  50,
+  0,
+  0, // 第2个顶点坐标 (V1)
+  0,
+  25,
+  0, // 第3个顶点坐标 (V2)
+]);
 
+// 3. 创建位置属性 (BufferAttribute)
+// 将顶点数据封装成一个 BufferAttribute。
+// 第二个参数 `3` 表示每组数据有3个分量（即 x, y, z 构成一个顶点）。
+const attributes = new THREE.BufferAttribute(vertices, 3);
 
+// 4. 将位置属性赋值给 geometry
+// 将创建的属性命名为 "position"，并添加到 geometry 的 attributes 对象中。
+// "position" 是一个特殊的名字，着色器会用它来确定顶点的位置。
+geometry.attributes.position = attributes;
 
+// 5. 定义顶点颜色数据
+// 为每个顶点定义一个颜色。数据格式与顶点位置类似。
+// 这里的(R, G, B)值是 0.0 到 1.0 之间的浮点数。
+const colors = new Float32Array([
+  1,
+  0,
+  0, // 第1个顶点的颜色 (红色)
+  0,
+  0,
+  1, // 第2个顶点的颜色 (蓝色)
+  0,
+  1,
+  0, // 第3个顶点的颜色 (绿色)
+]);
 
+// 6. 创建并赋值颜色属性
+// 同样将颜色数据封装成 BufferAttribute，每组数据3个分量 (R, G, B)。
+// 并将其命名为 "color" 添加到 geometry 的 attributes 中。
+geometry.attributes.color = new THREE.BufferAttribute(colors, 3);
 
+// 7. 创建材质
+// 使用 PointsMaterial 或 LineBasicMaterial
+const material = new THREE.LineBasicMaterial({
+  // 或者 THREE.PointsMaterial
+  // color: 0xffff00, // 注意：当 vertexColors 为 true 时，此处的颜色设置会失效
+  // 关键！告诉材质去使用 geometry.attributes.color 中定义的顶点颜色
+  vertexColors: true,
+  size: 20, // 仅对 PointsMaterial 有效，定义点的大小
+});
 
+// 8. 创建网格模型 (Points 或 Line)
+// const mesh = new THREE.Points(geometry, material); // 如果想显示为三个彩色的点
+// Line 会将顶点按顺序连接起来，形成 V0-V1-V2 的折线
+const mesh = new THREE.Line(geometry, material);
 
+// 9. 导出模型
+export default mesh;
+
+```
+
+### 原理讲解
+
+#### 1. 如何为顶点赋予颜色？
+
+为顶点赋予颜色的过程可以分为三步，这三步必须协同工作：
+
+1. 在 BufferGeometry 中提供颜色数据：
+
+- 您需要创建一个与顶点位置一一对应的颜色数组。如果您的模型有3个顶点，那么您就需要提供3个颜色值。
+
+- 您将这个颜色数组封装成一个 BufferAttribute，并将其添加到几何体的属性中，必须命名为 color (geometry.attributes.color = ...)。
+
+1. 在材质中启用顶点颜色：
+
+- 仅仅在几何体中提供了颜色数据还不够。您必须在创建材质时，明确地告诉它：“请不要使用你自己的统一颜色，去使用几何体上每个顶点自带的颜色！”
+
+- **这个指令就是 vertexColors: true。当 Three.js 的渲染器看到这个属性为 true 时，它就会去 geometry.attributes 中寻找那个名为 color 的属性来用。如果找不到，或者 vertexColors 为 false，它就会使用材质上设置的统一 color 属性（比如 color: 0xffff00）。**
+
+1. 渲染器进行颜色插值：
+
+- 当您使用 Line (线) 或 Mesh (三角面) 时，GPU 会自动在顶点之间进行颜色插值。
+
+- 比如，您的代码中有一条线段是从红色顶点 (V0) 连接到蓝色顶点 (V1)。GPU 在绘制这条线上的像素时，会自动计算出中间像素的颜色，形成一个从红到蓝的平滑渐变。这就是您在 Line 模型上看到渐变效果的原因。
+
+#### 2. color 对应的值是 RGB 吗？
+
+是的，完全正确。geometry.attributes.color 中数组的值就是 RGB (红, 绿, 蓝)。
+
+但有一个非常重要的细节：它使用的不是我们平时在 CSS 中常见的 0-255 范围的整数，而是归一化 (Normalized) 的浮点数，范围是 0.0 到 1.0。
+
+- (1.0, 0.0, 0.0) 对应 rgb(255, 0, 0)，即纯红色。
+
+- (0.0, 1.0, 0.0) 对应 rgb(0, 255, 0)，即纯绿色。
+
+- (0.0, 0.0, 1.0) 对应 rgb(0, 0, 255)，即纯蓝色。
+
+- (1.0, 1.0, 0.0) 是红色和绿色的混合，即黄色。
+
+- (0.5, 0.5, 0.5) 是中灰色。
+
+所以您代码中的 [1, 0, 0, 0, 0, 1, 0, 1, 0] 就分别代表了 红色、蓝色、绿色，并依次赋给了前三个顶点。
 
 
 
