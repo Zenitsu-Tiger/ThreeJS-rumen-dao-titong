@@ -1,65 +1,64 @@
 import * as THREE from "three";
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-/* const c1 = new THREE.Color(0xff0000);
-const c2 = new THREE.Color(0x0000ff);
-const c = new THREE.Color(); */
 
-// 如果第三个值取值是0，则返回c1的颜色，如果取值是1，则返回c2的颜色，如果取值是0.5，则返回c1和c2的中间颜色
-// 如果取0.1,那么就意味着c1取0.1，c2取0.9
-// c.lerpColors(c1, c2, 0);
-// 将 c1 修改为红色和蓝色的中间色
-/**
- * 执行前：
- * c1 = 红色 (1.0, 0.0, 0.0)
- * c2 = 蓝色 (0.0, 0.0, 1.0)
- * 执行后：
- * c1 = 紫色 (0.5, 0.0, 0.5) ← c1 被修改了！
- * c2 = 蓝色 (0.0, 0.0, 1.0) ← c2 保持不变
- * lerp 与 lerpColors 的区别
- */
-// c1.lerp(c2, 0.5);
-// console.log("颜色插值的结果", c1.getHexString());
-// 1. 创建一个空的 BufferGeometry
-// BufferGeometry 是一个高效的几何体表示，它将所有数据（如顶点位置、颜色、法线）存储在"属性"中。
-const geometry = new THREE.BufferGeometry();
-// CatmullRomCurve3是一个三次贝塞尔曲线
-const curve = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(-50, 20, 90),
-  new THREE.Vector3(-10, 40, 40),
-  new THREE.Vector3(0, 0, 0),
-  new THREE.Vector3(60, -60, 0),
-  new THREE.Vector3(70, 0, 80),
-]);
-// 平均取采样点
-const pointsArr = curve.getSpacedPoints(100);
+const loader=new GLTFLoader()
 
-geometry.setFromPoints(pointsArr);
+const model =new THREE.Group()
 
-const pos = geometry.attributes.position;
-console.log("pos", pos);
-// 获取顶点的数量
-const count = pos.count;
-const colorsArr = [];
-const c1 = new THREE.Color(0xff0000);
-const c2 = new THREE.Color(0x0000ff);
-for (let i = 0; i < count; i++) {
-  const percent = i / count;
-  const c = c1.clone().lerp(c2, percent);
-  //   colorsArr.push(percent, 0, 1 - percent);
-  colorsArr.push(c.r, c.g, c.b);
-}
-console.log("length", colorsArr.length);
-const colors = new Float32Array(colorsArr);
+loader.load("./assets/地形.glb",(gltf)=>{
+  // mesh是模型中的第一个网格对象
+  const mesh=gltf.scene.children[0]
+  if(mesh.material){
+mesh.material.vertexColors=true
+  }
+  // 获取网格对象的顶点位置
+  const pos=mesh.geometry.attributes.position
+  // 几何体顶点数量
+  const count =pos.count 
+  // 获取第一个顶点的x座标
+  const x=pos.getX(0)
+  console.log('x',x);
+  
+  const yArr=[]
+ for(let i=0;i<count;i++){
+  const y=pos.getY(i)
+  // 增加顶点y座标的高度
+  // pos.setY(i,y*2)
+  yArr.push(y)
+ }
 
-// 必须通过THREE.BufferAttribute来设置颜色属性
-geometry.attributes.color = new THREE.BufferAttribute(colors, 3);
-// 7. 创建材质
-// 使用 PointsMaterial 或 LineBasicMaterial
-const material = new THREE.LineBasicMaterial({
-  vertexColors: true,
-  size: 20, // 仅对 PointsMaterial 有效，定义点的大小
-});
-const mesh = new THREE.Line(geometry, material);
+ yArr.sort()
+
+ const miny=yArr[0]
+ const maxy=yArr[yArr.length-1]
+
+ const height=maxy-miny
+ 
+ const colorsArr=[]
+//  山谷颜色
+ const color1=new THREE.Color(0x0000ff)
+//  山腰颜色
+ const color2=new THREE.Color(0x00ff00)
+//  山顶颜色
+ const color3=new THREE.Color(0xff0000)
+let c=null
+ for(let i=0;i<count;i++){
+  const percent=(pos.getY(i)-miny)/height
+  if(percent<0.5){
+    c=color1.clone().lerp(color2,percent*2)
+  }else{
+    c=color2.clone().lerp(color3,(percent-0.5)*2)
+  }
+  colorsArr.push(c.r,c.g,c.b)
+ }
+
+ const colors=new Float32Array(colorsArr)
+
+ mesh.geometry.attributes.color=new THREE.BufferAttribute(colors,3 )
+ model.add(mesh)
+})
+
 
 // 9. 导出模型
-export default mesh;
+export default model;

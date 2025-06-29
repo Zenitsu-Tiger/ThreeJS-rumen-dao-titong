@@ -1613,6 +1613,8 @@ export default mesh;
 
 
 
+# 查看或设置gltf几何体顶点
+
 
 
 
