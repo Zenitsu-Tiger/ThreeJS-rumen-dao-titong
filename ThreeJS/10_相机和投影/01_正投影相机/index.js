@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import model from "./model.js";
+import model from "./mesh.js";
 
 //场景
 const scene = new THREE.Scene();
@@ -20,17 +20,25 @@ scene.add(gridHelper); */
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(100, 60, 50);
 scene.add(directionalLight);
-const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+const ambient = new THREE.AmbientLight(0xffff2312ff, 0.4);
 scene.add(ambient);
 
-//相机
 
-const width = window.innerWidth; //canvas画布高度
+/* const width = window.innerWidth; //canvas画布高度
 const height = window.innerHeight; //canvas画布宽度
+const camera = new THREE.PerspectiveCamera(45, width / height, 1, 8000);
+camera.position.set(800, 800, 800);
+camera.lookAt(0, 0, 0); */
 
-const camera = new THREE.PerspectiveCamera(30, width / height, 1, 3000);
-camera.position.set(292, 223, 185);
-camera.lookAt(0, 0, 0);
+// 正投影相机
+const width=window.innerWidth
+const height=window.innerHeight
+const k=width/height
+// 控制left right top bottom near far范围大小
+const s=2000
+const camera=new THREE.OrthographicCamera(-s*k,s*k,s,-s,1,8000)
+camera.position.set(0,2000,0)
+camera.lookAt(2000,0,2000)
 
 // WebGL渲染器设置
 const renderer = new THREE.WebGLRenderer({
@@ -50,7 +58,8 @@ function render() {
 render();
 
 const controls = new OrbitControls(camera, renderer.domElement);
-
+controls.target.set(2000,0,2000)
+controls.update()
 // 画布跟随窗口变化
 window.onresize = function () {
   const width = window.innerWidth;
