@@ -18,7 +18,7 @@ const width = window.innerWidth; //canvas画布高度
 const height = window.innerHeight; //canvas画布宽度
 
 // 平行光默认指向座标原点
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
 directionalLight.position.set(100, 60, 0);
 scene.add(directionalLight);
 
@@ -63,8 +63,48 @@ lightFolder
   .name("角度 (angle)")
   .onChange(updateLightPosition);
 
+
+// 设置产生阴影的光源对象，开启光源阴影的计算功能
+directionalLight.castShadow = true;
+
+
+// 设置三维场景计算阴影的范围
+directionalLight.shadow.camera.left=-100
+directionalLight.shadow.camera.right=100
+directionalLight.shadow.camera.top=100
+directionalLight.shadow.camera.bottom=-100
+directionalLight.shadow.camera.near=1
+directionalLight.shadow.camera.far=1000
+
+// 2. 增强阴影质量
+directionalLight.shadow.mapSize.set(2048, 2048);
+directionalLight.shadow.radius = 3;
+
+// 3. 【关键】每次修改相机属性后，必须手动更新投影矩阵
+directionalLight.shadow.camera.updateProjectionMatrix();
+
+
+// 4. 创建 CameraHelper 来可视化【真实】的阴影范围
+const cameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+scene.add(cameraHelper);
+
+// 5. 【可选但推荐】更新你的GUI，让它也反映正确的范围
+const shadowFolder = gui.addFolder("平行光阴影");
+const cam = directionalLight.shadow.camera;
+
+// 让GUI控制器反映并能修改新的、正确的范围
+shadowFolder.add(cam, 'left', -1500, 0).onChange(() => {
+    cam.updateProjectionMatrix();
+    cameraHelper.update();
+});
+shadowFolder.add(cam, 'right', 0, 1500).onChange(() => {
+    cam.updateProjectionMatrix();
+    cameraHelper.update();
+});
+// ...可以为 top 和 bottom 也添加控制器
+
 const camera = new THREE.PerspectiveCamera(90, width / height, 1, 3000);
-camera.position.set(300, 300, 300);
+camera.position.set(100, 100, 100); 
 camera.lookAt(0, 0, 0);
 
 // WebGL渲染器设置
@@ -75,7 +115,8 @@ renderer.shadowMap.enabled = true; // 开启阴影渲染
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.setPixelRatio(window.devicePixelRatio); //防止输出模糊
 renderer.setSize(width, height);
-
+// 
+renderer.shadowMap.type=THREE.VSMShadowMap
 // 将渲染器的canvas添加到body中
 document.body.appendChild(renderer.domElement);
 
@@ -102,7 +143,6 @@ controls.maxDistance = 500; */
 // 在调整距离的过程中计算dis
 controls.addEventListener("change", () => {
   const dis = controls.getDistance();
-  console.log("dis", dis);
 });
 
 // controls.minPolarAngle = 0;
@@ -118,3 +158,12 @@ window.onresize = function () {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 };
+
+
+
+// 手动强制设置为很小的值
+directionalLight.shadow.camera.left = -50;
+directionalLight.shadow.camera.right = 50;
+directionalLight.shadow.camera.updateProjectionMatrix();
+
+// 然后观察 CameraHelper 是否变化

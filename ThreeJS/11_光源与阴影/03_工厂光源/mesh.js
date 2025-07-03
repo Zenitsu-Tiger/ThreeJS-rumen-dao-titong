@@ -16,7 +16,6 @@ textureCube.encoding = THREE.sRGBEncoding;
 
 // 使用GLTFLoader加载模型
 loader.load("./工厂.glb", gltf => {
-  console.log("场景3D模型数据", gltf.scene);
   group.add(gltf.scene);
   // 5. 遍历Gltf模型中的所有网格（Mesh）
   gltf.scene.traverse(obj => {
@@ -25,6 +24,10 @@ loader.load("./工厂.glb", gltf => {
       obj.material.envMap = textureCube;
       // 7. 设置环境贴图对模型材质的影响强度
       obj.material.envMapIntensity = 1.0;
+
+      // 设置阴影效果
+      obj.castShadow = true;
+      obj.receiveShadow = true;
     }
   });
 
