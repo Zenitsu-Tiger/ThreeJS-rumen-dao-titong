@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+        }
+        .pos{
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: 50px;
+          display: flex;
+          gap: 10px;
+        }
+        .bu{
+          width: 60px;
+          height: 60px;
+          background-color: #f3f3f3;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: 000;
+          font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+  <div class="pos">
+    <div id="x" class="bu">X</div>
+    <div id="y" class="bu">Y</div>
+    <div id="z" class="bu">Z</div>
+  </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.174.0/build/three.module.js",
+        "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/"
+      }
+    }
+  </script>
+<script type="module" src="./index.js"></script>
+</body>
+</html>
