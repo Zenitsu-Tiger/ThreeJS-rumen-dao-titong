@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js中文网：www.webgl3d.cn</title>
+    <style>
+        body {
+            overflow: hidden;
+            margin: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        /**
+        * 创建一个canvas对象，绘制几何图案或添加文字
+        */
+        const canvas = document.createElement("canvas");
+        const h = 80;
+        const w = 140;//根据渲染像素大小设置，过大性能差，过小不清晰
+        canvas.width = w;
+        canvas.height = h;
+        const c = canvas.getContext('2d');
+        //填充一个黑色半透明矩形
+        c.fillStyle = "rgba(0,0,0,0.5)";
+        c.fillRect(0, 0, w, h);
+        // 文字
+        c.beginPath();
+        c.translate(w / 2, h / 2);
+        c.fillStyle = "#ffffff"; //文本填充颜色
+        c.font = "normal 32px 宋体"; //字体样式设置
+        c.textBaseline = "middle"; //文本与fillText定义的纵坐标
+        c.textAlign = "center"; //文本居中(以fillText定义的横坐标)
+        c.fillText('设备A', 0, 0);
+
+        document.body.appendChild(canvas);
+    </script>
+</body>
+
+</html>

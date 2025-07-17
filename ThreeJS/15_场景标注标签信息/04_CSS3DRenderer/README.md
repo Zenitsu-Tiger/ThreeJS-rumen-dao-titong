@@ -1,0 +1,115 @@
+# CSS3DRenderer
+
+前面章节存在一个问题，那就是CSS2DRenderer在渲染的过程中，对应的HTML标签会在相机缩放的过程中出现位置偏移的问题，所以我们可以考虑使用CSS3DRenderer来解决这个痛点问题。
+
+### CSS2DRenderer：2D叠加层（为您提供恒定大小的标签）
+
+- 工作原理：它获取一个3D世界中的坐标点（比如您圆锥体顶部的位置），然后将HTML元素作为一个2D叠加层渲染在那个点的屏幕位置上。
+
+- 大小恒定：它在渲染时忽略了深度（Z轴）对缩放的影响。所以，无论您的摄像机距离那个3D点多远，渲染出来的HTML标签在屏幕上的大小都是一样的。这正是为了保证标签、注释等信息永远清晰可读。
+
+- 始终朝向相机：它会自动调整，让标签始终正对着您，不会因为您旋转视角而看到标签的侧面。
+
+一个很好的比喻：就像视频里的字幕或者地图上的地点标记。无论您怎么缩放地图，地点的文字标记大小基本不变，以方便您阅读。
+
+### CSS3DRenderer：真正的3D嵌入
+
+- 工作原理：它使用CSS的3D变换（transform: translate3d(...) rotate3d(...)等）将HTML元素真正地放置在3D空间中。它和您的圆锥体（THREE.Mesh）是平等的3D对象。
+
+- 大小会变化：正因为它是一个真正的3D对象，所以它会遵循透视投影的所有规则。当您把摄像机拉远时，这个HTML元素会和圆锥体一样变小。当您靠近时，它会变大。
+
+- 有3D姿态：您可以从不同角度观察它，看到它在3D空间中旋转、倾斜的样子。
+
+一个很好的比喻：就像一个真实世界里贴在盒子上的贴纸。当您把盒子拿远，盒子和它上面的贴纸会一起变小。
+
+### 总结
+
+| 特性     | CSS2DRenderer (2D标签)         | CSS3DRenderer (3D内嵌元素)       |
+| :------- | :----------------------------- | :------------------------------- |
+| 缩放行为 | 大小保持不变                   | 遵循近大远小的透视规则           |
+| 视觉效果 | 2D叠加层，永远清晰             | 融入3D场景，有立体感             |
+| 用途     | 场景物体的名称标签、信息提示框 | 3D空间中的UI面板、可交互的3D菜单 |
+
+所以，您观察到的“大小不变”的现象，正是 CSS2DRenderer 的设计初衷和最大优点，非常适合用来给场景中的物体添加不随距离变化的、易于阅读的标签。
+
+
+
+
+
+# 精灵模型的尺寸标注
+
+## THREE.Sprite的尺寸机制
+
+### 1. 默认尺寸
+
+```js
+const sprite = new THREE.Sprite(spriteMaterial);
+// 默认情况下，sprite的尺寸是 1x1 单位
+```
+
+### 2. 纹理影响尺寸
+
+当您使用纹理时，Sprite会根据纹理的宽高比自动调整：
+
+```typescript
+const textureLoader = new THREE.TextureLoader();
+const texture = textureLoader.load('./警告.png');
+const spriteMaterial = new THREE.SpriteMaterial({
+    map: texture,
+});
+const sprite = new THREE.Sprite(spriteMaterial);
+```
+
+关键点：
+
+- 如果纹理是 256x128 像素，Sprite会保持 2:1 的宽高比
+
+- 但实际显示尺寸仍然基于Three.js的世界单位，不是像素单位
+
+### 3. scale.set() 的作用
+
+```typescript
+sprite.scale.set(2, 2, 1);
+```
+
+这行代码的含义：
+
+- X轴缩放: 2 - 宽度放大2倍
+
+- Y轴缩放: 2 - 高度放大2倍
+
+- Z轴缩放: 1 - 对Sprite无效果（Sprite总是面向摄像机）
+
+### 4. 实际尺寸计算公式text
+
+```typescript
+最终显示尺寸 = 默认尺寸 × 纹理宽高比 × scale值
+```
+
+### 5. 在您的代码中
+
+```typescript
+sprite.scale.set(2, 2, 1);
+const obj = scene.getObjectByName('设备A标注');
+obj.add(sprite);
+```
+
+- prite被添加到名为"设备A标注"的空对象上
+
+- 最终尺寸 = 1单位 × 纹理比例 × 2倍缩放
+
+- 在3D场景中的实际像素大小还会受到摄像机距离、视野角度等因素影响
+
+### 6. 动态调整建议
+
+如果您想更精确控制尺寸，可以：
+
+```typescript
+// 获取纹理的原始尺寸
+texture.onLoad = () => {
+    const aspect = texture.image.width / texture.image.height;
+    sprite.scale.set(desiredWidth, desiredWidth / aspect, 1);
+};
+```
+
+这样可以根据纹理的真实宽高比来精确设置您想要的显示尺寸。

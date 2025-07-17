@@ -110,7 +110,7 @@ window.onresize = function () {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 
-  // 更新FXAA पास的分辨率
+  // 更新FXAA 的分辨率
   const pixelRatio = renderer.getPixelRatio();
   fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pixelRatio);
   fxaaPass.material.uniforms['resolution'].value.y = 1 / (height * pixelRatio);

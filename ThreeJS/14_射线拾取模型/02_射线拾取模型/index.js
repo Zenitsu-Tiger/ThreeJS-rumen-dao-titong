@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import group from "./mesh.js";
+import {group,mesh1,mesh2,mesh3} from "./mesh.js";
 
 //场景
 const scene = new THREE.Scene();
@@ -43,8 +43,6 @@ renderer.setSize(width, height);
 // 将渲染器的canvas添加到body中
 document.body.appendChild(renderer.domElement);
 
-let i = 0;
-
 // 渲染循环
 function render() {
   renderer.render(scene, camera);
@@ -62,3 +60,22 @@ window.onresize = function () {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 };
+
+// 射线投射器
+const rayCaster=new THREE.Raycaster()
+console.log('raycaster',rayCaster.ray);
+// 设置射线起点
+rayCaster.ray.origin.set(-100,0,0)
+// 设置射线的方向，沿着x轴正方形发射
+rayCaster.ray.direction.set(1,0,0)
+// 射线交叉计算方法
+const intersects=rayCaster.intersectObjects(group.children)
+console.log('intersects',intersects)
+
+if(intersects.length>0){
+// 射线交叉返回的结果
+console.log('射线交叉返回的结果',intersects[0].object.material.color.set(0x00ff00 ));
+// 射线交叉点座标
+console.log('射线交叉点座标',intersects[0].point);
+
+}
