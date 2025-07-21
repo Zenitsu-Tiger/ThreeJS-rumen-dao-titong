@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        overflow: hidden;
+        margin: 0px;
+      }
+
+      .bu {
+        background: rgba(255, 255, 255, 0.05);
+        width: 60px;
+        height: 60px;
+        line-height: 60px;
+        text-align: center;
+        color: #fff;
+        display: inline-block;
+        border-radius: 30px;
+      }
+
+      .bu:hover {
+        cursor: pointer;
+      }
+
+      .pos {
+        position: absolute;
+        left: 50%;
+        margin-left: -90px;
+        bottom: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pos">
+      <div id="Idle" class="bu">休息</div>
+      <div id="Run" class="bu" style="margin-left: 10px">跑步</div>
+      <div id="Walk" class="bu" style="margin-left: 10px">走路</div>
+    </div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.174.0/build/three.module.js",
+          "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

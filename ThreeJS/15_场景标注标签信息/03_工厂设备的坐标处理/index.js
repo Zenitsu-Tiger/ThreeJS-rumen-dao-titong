@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // 引入CSS2渲染器CSS2DRenderer
-import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+import {
+  CSS3DRenderer,
+  CSS3DObject,
+} from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import model from './mesh.js'; //模型对象
 import tag from './tag.js';
 
@@ -53,18 +56,18 @@ renderer.setSize(width, height);
 document.body.appendChild(renderer.domElement);
 
 // 创建一个CSS2渲染器CSS2DRenderer
-const css2Renderer = new CSS2DRenderer();
-css2Renderer.setSize(width, height);
-document.body.appendChild(css2Renderer.domElement);
+const css3Renderer = new CSS3DRenderer();
+css3Renderer.setSize(width, height);
+document.body.appendChild(css3Renderer.domElement);
 
 // HTML标签<div id="tag"></div>外面父元素叠加到canvas画布上且重合
 // 注意canvas网布布局方式不同，CSS相关代码写法也可能不同，不过你只要能让标签父元素叠加到canvas画布上上面且重合就行
-css2Renderer.domElement.style.position = 'absolute';
-css2Renderer.domElement.style.top = '0px';
-css2Renderer.domElement.style.pointerEvents = 'none';
-// 改变canvas画布在网页位置，标签父元素css2Renderer.domElement也要重新定位
+css3Renderer.domElement.style.position = 'absolute';
+css3Renderer.domElement.style.top = '0px';
+css3Renderer.domElement.style.pointerEvents = 'none';
+// 改变canvas画布在网页位置，标签父元素css3Renderer.domElement也要重新定位
 //  renderer.domElement.style.marginTop = '200px';
-//  css2Renderer.domElement.style.top = '200px';
+//  css3Renderer.domElement.style.top = '200px';
 
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
@@ -94,7 +97,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 // 渲染循环
 function render() {
   controls.update();
-  css2Renderer.render(scene, camera);
+  css3Renderer.render(scene, camera);
 
   // 使用后期处理渲染，而不是直接renderer.render
   composer.render();
@@ -109,7 +112,7 @@ window.onresize = () => {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
-  css2Renderer.setSize(width, height);
+  css3Renderer.setSize(width, height);
 
   // 重要：也要更新后期处理的分辨率
   composer.setSize(width, height);
@@ -167,7 +170,6 @@ window.addEventListener('click', (event) => {
     } else {
       // 如果没有拾取到任何物体，清空高亮列表
       outlinePass.selectedObjects = [];
-      
     }
   } else {
     // 如果没有拾取到任何物体，清空高亮列表

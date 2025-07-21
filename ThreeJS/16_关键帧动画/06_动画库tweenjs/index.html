@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        overflow: hidden;
+        margin: 0px;
+      }
+      #close:hover {
+        cursor: pointer;
+      }
+      .bu {
+        background: rgba(255, 255, 255, 0.05);
+        width: 80px;
+        height: 50px;
+        line-height: 50px;
+        text-align: center;
+        color: #fff;
+        display: inline-block;
+        border-radius: 25px;
+        margin: 0 8px;
+        font-size: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+
+        /* 🔑 禁止文本选择 */
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+
+        /* 🔑 禁止拖拽 */
+        -webkit-user-drag: none;
+        -khtml-user-drag: none;
+        -moz-user-drag: none;
+        -o-user-drag: none;
+        user-drag: none;
+
+        /* 🔑 禁止点击时的默认高亮 */
+        -webkit-tap-highlight-color: transparent;
+
+        /* 🔑 确保按钮行为 */
+        outline: none;
+      }
+
+      .bu:hover {
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      /* 🔑 按钮激活状态样式 */
+      .bu:active {
+        transform: translateY(0px);
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .pos {
+        position: absolute;
+        left: 50%;
+        bottom: 100px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 30px;
+        backdrop-filter: blur(10px);
+
+        /* 🔑 容器也禁止文本选择 */
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tag" style="opacity: 0; pointer-events: none">
+      <!-- position:relative;约束子元素绝对定位参照点 -->
+      <div style="position: relative; width: 400px; height: 322px; color: #fff">
+        <!-- 图片绝对定位100%填充父元素，作为标签的背景 -->
+        <img
+          src="./信息背景.png"
+          alt=""
+          style="width: 100%; position: absolute; left: 0px; top: 0px"
+        />
+
+        <!-- 名称、存储量、设备状态、等信息叠加到背景图上即可 -->
+        <div style="position: absolute; left: 48px; top: 36px; font-size: 16px">
+          <div style="font-size: 20px; font-weight: 400">
+            <span id="name">设备A</span>
+          </div>
+          <div style="margin-top: 30px">
+            <span
+              style="
+                font-weight: 400;
+                margin-left: 80px;
+                font-size: 40px;
+                color: #00ffff;
+              "
+              >276559 L</span
+            >
+          </div>
+          <div style="margin-top: 20px">
+            <span style="color: #ccc; font-weight: 300">管理</span
+            ><span style="font-weight: 400; margin-left: 30px">郭老师</span>
+          </div>
+          <div style="margin-top: 10px">
+            <span style="color: #ccc; font-weight: 300">工号</span
+            ><span style="font-weight: 400; margin-left: 30px">webgl3d.cn</span>
+          </div>
+        </div>
+        <div style="position: absolute; left: 285px; top: 35px">
+          <span style="color: #ffff00">异常</span>
+        </div>
+
+        <div style="position: absolute; left: 350px; top: 20px">
+          <img
+            id="close"
+            src="./关闭.png"
+            width="32"
+            style="pointer-events: auto"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="pos">
+      <div id="A" class="bu">设备A</div>
+      <div id="B" class="bu">设备B</div>
+      <div id="car" class="bu">停车场</div>
+      <div id="all" class="bu">整体</div>
+    </div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.174.0/build/three.module.js",
+          "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/",
+          "@tweenjs/tween.js": "https://esm.sh/@tweenjs/tween.js@23.1.1"
+        }
+      }
+    </script>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        overflow: hidden;
+        margin: 0px;
+      }
+
+      /* 按钮容器使用Grid布局 */
+      .button-container {
+        position: absolute;
+        left: 50%;
+        bottom: 100px;
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        width: 320px; /* 4个按钮 × 60px + 3个间隙 × 20px */
+      }
+
+      .bu {
+        background: rgba(255, 255, 255, 0.1);
+        width: 60px;
+        height: 60px;
+        line-height: 60px;
+        text-align: center;
+        color: #fff;
+        border-radius: 30px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .bu:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="button-container">
+      <div id="resume" class="bu">恢复</div>
+      <div id="pause" class="bu">暂停</div>
+      <div id="play" class="bu">播放</div>
+      <div id="next" class="bu">下一步</div>
+    </div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.174.0/build/three.module.js",
+          "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>
