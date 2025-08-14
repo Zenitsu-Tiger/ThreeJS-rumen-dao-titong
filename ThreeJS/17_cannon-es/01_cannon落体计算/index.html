@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      #audioPrompt {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: Arial, sans-serif;
+        z-index: 1000;
+      }
+      #audioPrompt.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="audioPrompt">点击启用音效</div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.174.0/build/three.module.js",
+          "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/",
+          "three/addons/": "https://esm.sh/three@0.174.0/examples/jsm/",
+          "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+      }
+    </script>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>
