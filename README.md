@@ -88,10 +88,8 @@ ThreeJS/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/threejs-learning-notes.git
+git clone https://github.com/Suzumiya-Tiger/WebGL.git
 
-# 进入项目目录
-cd threejs-learning-notes
 
 # 每个章节都包含独立的示例代码和 README.md
 # 建议按照学习路线顺序阅读
