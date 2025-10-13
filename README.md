@@ -131,15 +131,6 @@ git clone https://github.com/Suzumiya-Tiger/WebGL.git
 
 欢迎提出问题和改进建议！如果你发现了错误或有更好的解释方式：
 
-1. Fork 本仓库
-2. 创建你的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交你的改动 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
 ## 🙏 致谢
 
