@@ -48,7 +48,6 @@ gui.add(ambientLight,'intensity').min(0).max(20).step(0.01).name('环境光强�
 
 const axesHelper=new THREE.AxesHelper(1000)
 scene.add(axesHelper)
-scene.add(axesHelper)
 
 const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,1,3000)
 

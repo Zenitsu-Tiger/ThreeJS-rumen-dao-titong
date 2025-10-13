@@ -102,7 +102,7 @@ labelElement.style.top = `${screenY}px`;
 
 #### **步骤 2: 创建 3D 物体和标签 (`mesh.js`)**
 
-你的 `mesh.js` 写得不错，我做了一些微调，使其更符合最佳实践：将标签作为子对象添加到 `mesh` 上，并设置其相对位置。
+将标签作为子对象添加到 `mesh` 上，并设置其相对位置。
 
 ```javascript
 import * as THREE from 'three';

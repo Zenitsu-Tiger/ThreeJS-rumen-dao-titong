@@ -137,10 +137,6 @@ GLTF 期望不翻转:
 └─────────┘
 ```
 
-
-
-
-
 ## 为什么需要保持一致？
 
 ```js
@@ -150,7 +146,6 @@ console.log('mesh.material.map.flipY', mesh.material.map.flipY); // false
 // 你手动加载的纹理
 const texture = texLoader.load('./phone/黑色.png')
 console.log('texture.flipY', texture.flipY); // true (默认值)
-
 // 如果不统一，纹理就会上下颠倒
 ```
 

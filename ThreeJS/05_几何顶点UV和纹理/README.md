@@ -101,7 +101,7 @@ const material = new THREE.MeshLambertMaterial({ map: texture });
 
 5. **注意事项**
 
-- 若 UV 坐标超出 [0,1] 范围，可通过 `texture.wrapS = texture.wrapT = THREE.RepeatWrapping` 实现平铺；
+- 若 UV 坐标超出 [0,1] 范围，可通过 `texture.wrapS = texture.wrapT = THREE.RepeatWrapping` 实现复制平铺；
 - 若需要更精细的贴图控制，可在顶点数据中自定义不同的 UV 坐标（非矩形展开），实现局部或特殊区域贴图。
 
 ## uv坐标的自动裁剪
@@ -480,3 +480,50 @@ finalV = originalV * repeat.y
 - 使用长宽比与几何体接近的图片；
 - 或者给 UV 自定义分布，让每份小贴图的 UV 范围和几何尺寸比例一致。
 
+# 环境贴图
+
+## RGBELoader 的作用
+
+```javascript
+const rgbeLoader = new RGBELoader();
+```
+
+**RGBELoader** 是Three.js提供的专门用于加载HDR格式图片的加载器。HDR图片相比普通图片具有更大的亮度范围，可以存储真实世界中的光照信息。
+
+## 加载HDR贴图文件
+
+```javascript
+rgbeLoader.load('/src/assets/Alex_Hart-Nature_Lab_Bones_2k.hdr', texture => {
+```
+
+这里加载了一个名为 `Alex_Hart-Nature_Lab_Bones_2k.hdr` 的HDR环境贴图文件。加载完成后会执行回调函数，返回加载好的texture对象。
+
+## 设置贴图映射方式
+
+```javascript
+texture.mapping = THREE.EquirectangularReflectionMapping;
+```
+
+**EquirectangularReflectionMapping** 是等距圆柱投影反射映射：
+
+- **等距圆柱投影**：将球形的360度环境图展开成矩形图片的投影方式
+- **反射映射**：用于计算物体表面的反射效果
+
+## 设置场景背景和环境
+
+```javascript
+scene.background = texture;
+scene.environment = texture;
+```
+
+- **scene.background**：将HDR贴图设置为场景的背景，这样你就能看到360度的环境背景
+- **scene.environment**：将HDR贴图设置为环境光照贴图，用于基于图像的光照（IBL - Image Based Lighting）
+
+## 为什么要使用HDR环境贴图？
+
+1. **真实光照**：HDR包含真实世界的光照信息，能提供更自然的照明效果
+2. **反射效果**：金属等材质可以反射环境，让物体看起来更真实
+3. **环境氛围**：提供360度的背景环境，增强场景的沉浸感
+4. **自动光照**：无需手动设置复杂的光源，HDR环境贴图可以提供全方位的环境光照
+
+这样设置后，你的3D场景就会有一个真实的环境背景，并且场景中的物体会根据这个环境进行光照计算和反射，效果会比单纯使用几个点光源或方向光更加真实自然。

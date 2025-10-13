@@ -57,6 +57,10 @@ controls.enablePan = false;
 controls.minDistance = 100;
 controls.maxDistance = 500;
 
+// 设置带阻尼的惯性
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+
 // 获取相机和目标观察点的距离,一般拿来辅助设置上面的minDistance和maxDistance
 // const dis = controls.getDistance();
 // console.log("dis", dis);

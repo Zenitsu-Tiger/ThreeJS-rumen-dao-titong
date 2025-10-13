@@ -130,7 +130,7 @@ render()
 ```
 
 - `function render() { ... }`: 定义了一个名为 `render` 的函数，这个函数是渲染循环的核心。
-- `requestAnimationFrame(render)`: `requestAnimationFrame` 是浏览器提供的一个 API，它会在下一次浏览器重绘之前调用指定的函数。通过递归调用 `render` 函数，可以实现持续的动画效果。
+- `requestAnimationFrame(render)`: `requestAnimationFrame` 是浏览器提供的一个 API，它会在**下一次浏览器重绘之前**调用指定的函数。通过递归调用 `render` 函数，可以实现持续的动画效果。
 - `renderer.render(scene, camera)`: 这是实际执行渲染操作的命令。它告诉渲染器使用指定的相机来渲染指定的场景。
 - `render()`: 首次调用 `render` 函数，启动渲染循环。
 

@@ -160,7 +160,6 @@ window.onresize = function () {
 };
 
 
-
 // 手动强制设置为很小的值
 directionalLight.shadow.camera.left = -50;
 directionalLight.shadow.camera.right = 50;

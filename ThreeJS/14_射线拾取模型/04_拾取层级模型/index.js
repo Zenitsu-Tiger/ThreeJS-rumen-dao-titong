@@ -123,7 +123,6 @@ if(intersects.length>0){
   // 这里如果采用[intersects[0].object]，则选中的不一定是父模型数组中的第一个，而可能是子模型数组中的第一个
 outlinePass.selectedObjects=[intersects[0].object.ancestors]
 }
-
 })
 
 // 画布跟随窗口变化

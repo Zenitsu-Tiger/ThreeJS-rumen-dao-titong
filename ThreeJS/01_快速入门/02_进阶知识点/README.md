@@ -1,6 +1,6 @@
 # 🔦 光源作用原理讲解
 
-![image-20250521233628193](/README.assets/image-20250521233628193.png)
+![image-20250521233628193](./README.assets/image-20250521233628193.png)
 
 光源大体有四种类型，点光源，环境光，平行光和聚光灯光源。
 
@@ -35,13 +35,7 @@ scene.add(pointlighthelper)
 
 ```
 
-![image-20250521233220718](/README.assets/image-20250521233220718.png)
-
-
-
-
-
-
+![image-20250521233220718](./README.assets/image-20250521233220718.png)
 
 ## 环境光
 
@@ -61,7 +55,7 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
 
 提供基础照明，防止模型背光面全黑。
 
-![image-20250521233446301](/README.assets/image-20250521233446301.png)
+![image-20250521233446301](./README.assets/image-20250521233446301.png)
 
 环境光是均匀且没有方向的，它会在物体上均匀地发亮。
 
@@ -96,7 +90,7 @@ directionalLight.target = mesh
 
 你提供的图中，解释了两种反射模型：
 
-![image-20250521235024582](/README.assets/image-20250521235024582.png)
+![image-20250521235024582](./README.assets/image-20250521235024582.png)
 
 ### 🌫️ 漫反射（图左）Diffuse Reflection
 
@@ -189,6 +183,37 @@ function render() {
 render()
 ```
 
+### 步骤解析：
+
+1. **`clock.getDelta()`** 返回的是**秒**为单位的时间间隔
+   - 例如：0.016秒（大约60FPS时的间隔）
+2. **乘以1000转换为毫秒**
+   - `spt = 0.016 * 1000 = 16毫秒`
+3. **帧率计算公式**
+   - 如果每帧间隔16毫秒，那么1秒(1000毫秒)能渲染多少帧？
+   - `FPS = 1000毫秒 ÷ 16毫秒/帧 = 62.5帧/秒`
+
+## 数学原理
+
+```
+时间间隔 × 帧率 = 1秒
+因此：帧率 = 1秒 ÷ 时间间隔
+
+当时间间隔用毫秒表示时：
+帧率 = 1000毫秒 ÷ 时间间隔(毫秒)
+```
+
+## 实际示例
+
+```
+时间间隔(ms)帧率计算结果(FPS)
+16.67ms1000/16.67~60 FPS
+33.33ms1000/33.33~30 FPS
+8.33ms1000/8.33~120 FPS
+```
+
+这就是为什么用 `1000 / spt` 来计算帧率的数学原理！
+
 ## canvas画布宽高动态变化
 
 canvas画布宽高动态变化，需要动态更新相机和渲染的参数，否则无法重新渲染。
@@ -247,7 +272,7 @@ window.onresize = function () {
 // 创建Stats对象
 const stats = new Stats()
 // stats.domElement:web页面上输出计算结果,一个div元素，
-document.body.appendChild(stats.domElement)
+   .appendChild(stats.domElement)
 // 渲染函数
 function render() {
   // requestAnimationframe循环调用的函数中调用update()来刷新时间
@@ -269,8 +294,6 @@ render()
 - 把 stats.domElement（其实是一个 <div> 元素）添加到网页上，这样就能看到性能面板。
 
 - 定义一个 render() 函数，这就是主渲染循环：
-
-  
 
   - 每一帧调用 stats.update() 来刷新性能数据；
   - 然后用 renderer.render(scene, camera) 把当前的 3D 场景画到 canvas 上；
@@ -378,7 +401,7 @@ window.onresize = function () {
 您在代码中这样设置了平行光：
 
 ```JavaScript
-const light = new THREE.DirectionalLight(0xffffff, 500);
+const light = new THREE.DirectionalLight (0xffffff, 500);
 light.position.set(100, 100, 100);
 scene.add(light);
 ```
@@ -415,7 +438,7 @@ controls.target.set(1000, 0, 1000);
 
 因此，从这个视角，您主要能看到立方体的：
 
-- **顶面** (朝向 +Y 方向)
+- **顶面** (朝向 +Y 方向) 
 - 朝向 **X 轴正方向**的侧面 (可称为“右侧面”)
 - 朝向 **Z 轴正方向**的侧面 (可称为“后侧面”，即远离坐标原点，朝向 Z 轴正向的那个面)
 
@@ -508,10 +531,6 @@ OrbitControls 在 Three.js 中用于控制相机围绕一个目标点进行轨�
 | **常用参数**              | `color`、`map`、`wireframe` | `color`、`emissive`、`side`、`flatShading` | `color`、`emissive`、`specular`、`shininess` |
 | **典型使用场景**          | 调试辅助、2D 精灵、UI 元素  | 需要基础光照且追求性能的几何体             | 需要高光效果或金属感的物体                   |
 
-
-
-------
-
 ## 原理对比
 
 1. **MeshBasicMaterial**
@@ -528,8 +547,6 @@ OrbitControls 在 Three.js 中用于控制相机围绕一个目标点进行轨�
      - `specular`：高光颜色
      - `shininess`：高光散射系数（数值越大，高光越集中）
    - **环境光支持**：同样可用 `emissive`，在光照不足时保留背景亮度。
-
-------
 
 ## 效果对比
 

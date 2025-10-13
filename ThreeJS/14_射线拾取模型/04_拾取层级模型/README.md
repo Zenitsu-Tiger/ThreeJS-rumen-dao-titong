@@ -187,7 +187,7 @@ const direction = farPoint.sub(nearPoint).normalize();
 
 # 向量选择原理
 
-## . 为什么使用二维向量？
+## 为什么使用二维向量？
 
 raycaster.setFromCamera() 使用二维向量是因为：
 

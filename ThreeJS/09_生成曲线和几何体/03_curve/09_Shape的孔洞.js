@@ -26,7 +26,6 @@ const geometry=new THREE.ShapeGeometry(shape,20)
 
 const material=new THREE.MeshLambertMaterial({
   color:0x00ffff,
-
 })
 const mesh=new THREE.Mesh(geometry,material)
 

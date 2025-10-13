@@ -34,6 +34,7 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(width, height)
 
 function render() {
+  group.rotateY(0.01);
     renderer.render(scene, camera);
     requestAnimationFrame(render);
 }

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贴图类型对比讲解</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        .map-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            transition: transform 0.3s;
+        }
+        .map-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        }
+        .map-card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .icon {
+            font-size: 1.5em;
+        }
+        .canvas-wrapper {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .description {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        .map-card:nth-child(1) .description { border-left-color: #3498db; }
+        .map-card:nth-child(2) .description { border-left-color: #e74c3c; }
+        .map-card:nth-child(3) .description { border-left-color: #2ecc71; }
+        .map-card:nth-child(4) .description { border-left-color: #f39c12; }
+        .code-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+        .property {
+            color: #9f7aea;
+        }
+        .value {
+            color: #68d391;
+        }
+        .comment {
+            color: #718096;
+        }
+        .slider-control {
+            margin: 15px 0;
+        }
+        .slider-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border: 3px solid #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: white;
+            border: 3px solid #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .value-display {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+        .key-points {
+            background: #fff9e6;
+            border: 2px solid #ffd93d;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .key-points h3 {
+            color: #f39c12;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .key-points ul {
+            list-style: none;
+            padding: 0;
+        }
+        .key-points li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            line-height: 1.6;
+        }
+        .key-points li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #f39c12;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .comparison-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 1em;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .tag-basic { background: #e3f2fd; color: #1976d2; }
+        .tag-pbr { background: #f3e5f5; color: #7b1fa2; }
+        .tag-standard { background: #fff3e0; color: #e65100; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Three.js 贴图类型对比讲解</h1>
+        <p class="subtitle">直观理解不同贴图的作用和视觉效果</p>
+        
+        <div class="comparison-grid">
+            <!-- AO Map -->
+            <div class="map-card">
+                <h2><span class="icon">🌑</span>AO Map（环境光遮蔽贴图）</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="aoCanvas" width="300" height="300"></canvas>
+                </div>
+                <div class="slider-control">
+                    <label>
+                        aoMapIntensity（强度）
+                        <span class="value-display" id="aoValue">1.0</span>
+                    </label>
+                    <input type="range" id="aoSlider" min="0" max="1" step="0.1" value="1">
+                </div>
+                <div class="description">
+                    <strong>作用：</strong>模拟光线在缝隙、凹陷处被遮挡的效果<br><br>
+                    <strong>原理：</strong>黑色区域 = 光线难到达（变暗），白色区域 = 正常受光<br><br>
+                    <strong>效果：</strong>增加深度感和立体感，让物体看起来更真实
+                </div>
+                <div class="code-example">
+<span class="property">aoMap</span>: aoTexture,
+<span class="property">aoMapIntensity</span>: <span class="value">1.0</span> <span class="comment">// 0-1，控制暗化程度</span>
+                </div>
+            </div>
+
+            <!-- Alpha Map -->
+            <div class="map-card">
+                <h2><span class="icon">👻</span>Alpha Map（透明度贴图）</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="alphaCanvas" width="300" height="300"></canvas>
+                </div>
+                <div class="slider-control">
+                    <label>
+                        透明度效果
+                        <span class="value-display" id="alphaValue">开启</span>
+                    </label>
+                    <input type="range" id="alphaSlider" min="0" max="1" step="1" value="1">
+                </div>
+                <div class="description">
+                    <strong>作用：</strong>控制材质各部分的透明度<br><br>
+                    <strong>原理：</strong>黑色 = 完全透明，白色 = 完全不透明，灰色 = 半透明<br><br>
+                    <strong>效果：</strong>实现镂空、树叶、玻璃裂纹等效果
+                </div>
+                <div class="code-example">
+<span class="property">alphaMap</span>: alphaTexture,
+<span class="property">transparent</span>: <span class="value">true</span> <span class="comment">// 必须开启透明</span>
+                </div>
+            </div>
+
+            <!-- Specular Map -->
+            <div class="map-card">
+                <h2><span class="icon">✨</span>Specular Map（高光贴图）</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="specularCanvas" width="300" height="300"></canvas>
+                </div>
+                <div class="slider-control">
+                    <label>
+                        光源角度
+                        <span class="value-display" id="specularValue">45°</span>
+                    </label>
+                    <input type="range" id="specularSlider" min="0" max="360" step="15" value="45">
+                </div>
+                <div class="description">
+                    <strong>作用：</strong>控制表面哪些区域更亮、更有光泽<br><br>
+                    <strong>原理：</strong>白色 = 高反射（亮），黑色 = 低反射（暗）<br><br>
+                    <strong>效果：</strong>模拟金属光泽、湿润表面、抛光区域
+                </div>
+                <div class="code-example">
+<span class="property">specularMap</span>: specularTexture,
+<span class="property">shininess</span>: <span class="value">30</span> <span class="comment">// 配合使用，控制光泽度</span>
+                </div>
+            </div>
+
+            <!-- Light Map -->
+            <div class="map-card">
+                <h2><span class="icon">💡</span>Light Map（光照贴图）</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="lightCanvas" width="300" height="300"></canvas>
+                </div>
+                <div class="slider-control">
+                    <label>
+                        lightMapIntensity（强度）
+                        <span class="value-display" id="lightValue">1.0</span>
+                    </label>
+                    <input type="range" id="lightSlider" min="0" max="2" step="0.1" value="1">
+                </div>
+                <div class="description">
+                    <strong>作用：</strong>预先烘焙的光照效果，提升性能<br><br>
+                    <strong>原理：</strong>保存了场景光照的计算结果，直接贴到物体上<br><br>
+                    <strong>效果：</strong>静态光照、阴影、间接光照（类似烘焙光照）
+                </div>
+                <div class="code-example">
+<span class="property">lightMap</span>: lightTexture,
+<span class="property">lightMapIntensity</span>: <span class="value">1.0</span> <span class="comment">// 光照强度</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>贴图类型</th>
+                        <th>颜色含义</th>
+                        <th>主要用途</th>
+                        <th>材质支持</th>
+                        <th>性能影响</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>AO Map</strong></td>
+                        <td>黑=暗，白=亮</td>
+                        <td>增加凹陷处阴影</td>
+                        <td><span class="tag tag-standard">Standard</span><span class="tag tag-pbr">PBR</span></td>
+                        <td>低</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Alpha Map</strong></td>
+                        <td>黑=透明，白=不透明</td>
+                        <td>镂空、树叶、玻璃</td>
+                        <td><span class="tag tag-basic">Basic</span><span class="tag tag-standard">Standard</span><span class="tag tag-pbr">PBR</span></td>
+                        <td>中</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Specular Map</strong></td>
+                        <td>白=高光，黑=哑光</td>
+                        <td>控制反光强度</td>
+                        <td><span class="tag tag-standard">Standard</span></td>
+                        <td>低</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Light Map</strong></td>
+                        <td>RGB颜色=光照颜色</td>
+                        <td>烘焙静态光照</td>
+                        <td><span class="tag tag-basic">Basic</span><span class="tag tag-standard">Standard</span><span class="tag tag-pbr">PBR</span></td>
+                        <td>低（提升性能）</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="key-points">
+            <h3>🔑 关键要点总结</h3>
+            <ul>
+                <li><strong>AO Map：</strong>让缝隙变暗，增强深度感。不需要强度属性也能用，但 aoMapIntensity 可以控制效果强弱</li>
+                <li><strong>Alpha Map：</strong>控制透明度，必须配合 transparent: true 使用。黑色部分会完全消失</li>
+                <li><strong>Specular Map：</strong>控制反光强度，只在 MeshPhongMaterial/MeshStandardMaterial 中生效。白色区域更亮</li>
+                <li><strong>Light Map：</strong>预计算的光照，可以大幅提升性能。适合静态场景，需要第二套 UV（uv2）</li>
+                <li><strong>复合使用：</strong>这些贴图可以同时使用，它们的效果会叠加（相乘混合）</li>
+                <li><strong>性能优化：</strong>使用 Light Map 代替实时光照可以显著提升帧率</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // AO Map 演示
+        const aoCanvas = document.getElementById('aoCanvas');
+        const aoCtx = aoCanvas.getContext('2d');
+        let aoIntensity = 1.0;
+
+        function drawAO() {
+            const w = aoCanvas.width;
+            const h = aoCanvas.height;
+            
+            // 基础颜色
+            aoCtx.fillStyle = '#8B7355';
+            aoCtx.fillRect(0, 0, w, h);
+            
+            // 绘制一个带凹槽的表面
+            const gradient = aoCtx.createRadialGradient(w/2, h/2, 20, w/2, h/2, 120);
+            gradient.addColorStop(0, `rgba(0, 0, 0, ${0.8 * aoIntensity})`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            aoCtx.fillStyle = gradient;
+            aoCtx.fillRect(0, 0, w, h);
+            
+            // 绘制角落暗化
+            ['0,0', `${w},0`, '0,'+h, `${w},${h}`].forEach(pos => {
+                const [x, y] = pos.split(',').map(Number);
+                const grad = aoCtx.createRadialGradient(x, y, 0, x, y, 80);
+                grad.addColorStop(0, `rgba(0, 0, 0, ${0.6 * aoIntensity})`);
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                aoCtx.fillStyle = grad;
+                aoCtx.fillRect(0, 0, w, h);
+            });
+            
+            // 添加文字说明
+            aoCtx.fillStyle = 'white';
+            aoCtx.font = 'bold 16px Arial';
+            aoCtx.textAlign = 'center';
+            aoCtx.shadowColor = 'rgba(0,0,0,0.8)';
+            aoCtx.shadowBlur = 5;
+            aoCtx.fillText('凹陷处变暗', w/2, h/2);
+            aoCtx.shadowBlur = 0;
+        }
+
+        // Alpha Map 演示
+        const alphaCanvas = document.getElementById('alphaCanvas');
+        const alphaCtx = alphaCanvas.getContext('2d');
+        let alphaEnabled = true;
+
+        function drawAlpha() {
+            const w = alphaCanvas.width;
+            const h = alphaCanvas.height;
+            
+            // 绘制棋盘背景（表示透明度）
+            const squareSize = 20;
+            for(let y = 0; y < h; y += squareSize) {
+                for(let x = 0; x < w; x += squareSize) {
+                    alphaCtx.fillStyle = ((x/squareSize + y/squareSize) % 2) ? '#ddd' : '#fff';
+                    alphaCtx.fillRect(x, y, squareSize, squareSize);
+                }
+            }
+            
+            // 绘制树叶形状
+            if(alphaEnabled) {
+                alphaCtx.fillStyle = '#4CAF50';
+                alphaCtx.beginPath();
+                alphaCtx.moveTo(w/2, h*0.2);
+                alphaCtx.quadraticCurveTo(w*0.7, h*0.3, w*0.6, h/2);
+                alphaCtx.quadraticCurveTo(w*0.7, h*0.7, w/2, h*0.8);
+                alphaCtx.quadraticCurveTo(w*0.3, h*0.7, w*0.4, h/2);
+                alphaCtx.quadraticCurveTo(w*0.3, h*0.3, w/2, h*0.2);
+                alphaCtx.fill();
+                
+                // 叶脉（透明区域）
+                alphaCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+                alphaCtx.lineWidth = 3;
+                alphaCtx.beginPath();
+                alphaCtx.moveTo(w/2, h*0.3);
+                alphaCtx.lineTo(w/2, h*0.7);
+                alphaCtx.stroke();
+            } else {
+                // 完全不透明的矩形
+                alphaCtx.fillStyle = '#4CAF50';
+                alphaCtx.fillRect(w*0.2, h*0.2, w*0.6, h*0.6);
+            }
+            
+            alphaCtx.fillStyle = 'white';
+            alphaCtx.font = 'bold 14px Arial';
+            alphaCtx.textAlign = 'center';
+            alphaCtx.shadowColor = 'rgba(0,0,0,0.8)';
+            alphaCtx.shadowBlur = 5;
+            alphaCtx.fillText(alphaEnabled ? '镂空效果' : '完全不透明', w/2, h-20);
+            alphaCtx.shadowBlur = 0;
+        }
+
+        // Specular Map 演示
+        const specularCanvas = document.getElementById('specularCanvas');
+        const specularCtx = specularCanvas.getContext('2d');
+        let lightAngle = 45;
+
+        function drawSpecular() {
+            const w = specularCanvas.width;
+            const h = specularCanvas.height;
+            
+            // 基础金属色
+            specularCtx.fillStyle = '#5D4E37';
+            specularCtx.fillRect(0, 0, w, h);
+            
+            // 计算光源位置
+            const rad = lightAngle * Math.PI / 180;
+            const lightX = w/2 + Math.cos(rad) * 100;
+            const lightY = h/2 + Math.sin(rad) * 100;
+            
+            // 绘制高光（白色区域反光强）
+            const gradient = specularCtx.createRadialGradient(lightX, lightY, 0, lightX, lightY, 150);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 255, 200, 0.3)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            specularCtx.fillStyle = gradient;
+            specularCtx.fillRect(0, 0, w, h);
+            
+            // 绘制光源方向指示
+            specularCtx.strokeStyle = 'yellow';
+            specularCtx.lineWidth = 3;
+            specularCtx.beginPath();
+            specularCtx.moveTo(w/2, h/2);
+            specularCtx.lineTo(lightX, lightY);
+            specularCtx.stroke();
+            
+            specularCtx.fillStyle = 'yellow';
+            specularCtx.beginPath();
+            specularCtx.arc(lightX, lightY, 8, 0, Math.PI * 2);
+            specularCtx.fill();
+            
+            specularCtx.fillStyle = 'white';
+            specularCtx.font = 'bold 14px Arial';
+            specularCtx.textAlign = 'center';
+            specularCtx.shadowColor = 'rgba(0,0,0,0.8)';
+            specularCtx.shadowBlur = 5;
+            specularCtx.fillText('高光反射', w/2, h-20);
+            specularCtx.shadowBlur = 0;
+        }
+
+        // Light Map 演示
+        const lightCanvas = document.getElementById('lightCanvas');
+        const lightCtx = lightCanvas.getContext('2d');
+        let lightIntensity = 1.0;
+
+        function drawLight() {
+            const w = lightCanvas.width;
+            const h = lightCanvas.height;
+            
+            // 基础色
+            lightCtx.fillStyle = '#666';
+            lightCtx.fillRect(0, 0, w, h);
+            
+            // 模拟烘焙的光照效果
+            // 暖色光源
+            const warmGrad = lightCtx.createRadialGradient(w*0.3, h*0.3, 0, w*0.3, h*0.3, 150);
+            warmGrad.addColorStop(0, `rgba(255, 200, 100, ${0.8 * lightIntensity})`);
+            warmGrad.addColorStop(1, 'rgba(255, 200, 100, 0)');
+            lightCtx.fillStyle = warmGrad;
+            lightCtx.fillRect(0, 0, w, h);
+            
+            // 冷色光源
+            const coolGrad = lightCtx.createRadialGradient(w*0.7, h*0.7, 0, w*0.7, h*0.7, 120);
+            coolGrad.addColorStop(0, `rgba(100, 150, 255, ${0.6 * lightIntensity})`);
+            coolGrad.addColorStop(1, 'rgba(100, 150, 255, 0)');
+            lightCtx.fillStyle = coolGrad;
+            lightCtx.fillRect(0, 0, w, h);
+            
+            lightCtx.fillStyle = 'white';
+            lightCtx.font = 'bold 14px Arial';
+            lightCtx.textAlign = 'center';
+            lightCtx.shadowColor = 'rgba(0,0,0,0.8)';
+            lightCtx.shadowBlur = 5;
+            lightCtx.fillText('预烘焙光照', w/2, h-20);
+            lightCtx.shadowBlur = 0;
+        }
+
+        // 事件监听
+        document.getElementById('aoSlider').addEventListener('input', (e) => {
+            aoIntensity = parseFloat(e.target.value);
+            document.getElementById('aoValue').textContent = aoIntensity.toFixed(1);
+            drawAO();
+        });
+
+        document.getElementById('alphaSlider').addEventListener('input', (e) => {
+            alphaEnabled = e.target.value === '1';
+            document.getElementById('alphaValue').textContent = alphaEnabled ? '开启' : '关闭';
+            drawAlpha();
+        });
+
+        document.getElementById('specularSlider').addEventListener('input', (e) => {
+            lightAngle = parseInt(e.target.value);
+            document.getElementById('specularValue').textContent = lightAngle + '°';
+            drawSpecular();
+        });
+
+        document.getElementById('lightSlider').addEventListener('input', (e) => {
+            lightIntensity = parseFloat(e.target.value);
+            document.getElementById('lightValue').textContent = lightIntensity.toFixed(1);
+            drawLight();
+        });
+
+        // 初始化
+        drawAO();
+        drawAlpha();
+        drawSpecular();
+        drawLight();
+    </script>
+</body>
+</html>

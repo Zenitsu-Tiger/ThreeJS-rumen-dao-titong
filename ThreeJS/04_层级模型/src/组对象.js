@@ -22,7 +22,4 @@ group.scale.set(2,2,2)
 group.rotation.set(Math.PI/4,Math.PI/4,Math.PI/4)
 console.log('group.children',group.children);
 
-
-
-
 export  default group

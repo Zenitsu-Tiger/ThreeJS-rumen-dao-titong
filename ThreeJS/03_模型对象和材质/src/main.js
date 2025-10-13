@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   OrbitControls
 } from 'three/addons/controls/OrbitControls.js';
-import { mesh, mesh2 } from './mesh.js';
+import { mesh, mesh2 } from './共享对象.js';
 
 const scene = new THREE.Scene();
 scene.add(mesh, mesh2);
