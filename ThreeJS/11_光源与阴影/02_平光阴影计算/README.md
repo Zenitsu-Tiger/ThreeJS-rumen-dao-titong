@@ -100,7 +100,7 @@ plane.receiveShadow = true;
 ```javascript
 directionalLight.shadow.camera.left = -200;
 directionalLight.shadow.camera.right = 200;
-directionalLight.shadow.camera.top = 200;
+directionalLight.ge.camera.top = 200;
 directionalLight.shadow.camera.bottom = -200;
 ```
 
