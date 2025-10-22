@@ -7,12 +7,12 @@ const model = new THREE.Group();
 const loader = new GLTFLoader();
 const person = new THREE.Group();
 model.add(person);
-loader.load('../人.glb', function (gltf) {
+loader.load('./人.glb', function (gltf) {
   gltf.scene.scale.set(10, 10, 10);
   person.add(gltf.scene);
 });
 
-const geometry = new THREE.BoxGeometry(5, 5, 5);
+const geometry = new THREE.BoxGeometry(2, 2, 2);
 geometry.translate(0, 0.2, 0);
 const material = new THREE.MeshLambertMaterial({
   color: 0x00ffff,
@@ -34,6 +34,6 @@ const dot = a.dot(b);
 if (dot > 0) {
   console.log('物体在人的前方');
 } else {
-  console.log('物体在人的后发');
+  console.log('物体在人的后方');
 }
 export default model;

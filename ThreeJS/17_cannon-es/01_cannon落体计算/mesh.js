@@ -36,6 +36,18 @@ world.addContactMaterial(contactMaterial);
 const loader = new GLTFLoader();
 const gltf = await loader.loadAsync('./hydratohedron.glb');
 
+// 遍历找到第一个真正的 Mesh 对象
+let mesh = null;
+gltf.scene.traverse(child => {
+  if (child.isMesh && !mesh) {
+    mesh = child;
+  }
+});
+
+if (!mesh) {
+  console.error('未找到 Mesh 对象');
+}
+
 mesh.position.y = 5;
 // mesh顶点位置数据
 const pos = mesh.geometry.attributes.position;
@@ -90,7 +102,8 @@ function enableAudio() {
 if (audioPrompt) {
   audioPrompt.addEventListener('click', enableAudio);
 }
-const box3 = new THREE.Box3();
+// ❌ 当前：精确但慢
+/* const box3 = new THREE.Box3();
 box3.expandByObject(mesh);
 const size = new THREE.Vector3();
 box3.getSize(size);
@@ -101,8 +114,18 @@ const shape = new CANNON.ConvexPolyhedron({
   vertices: vertices,
   // 三角形面的顶点索引数据
   faces: faces,
-});
+}); */
 
+const boxMaterial = new CANNON.Material();
+
+// ✅ 优化：简化且快
+const box3 = new THREE.Box3().setFromObject(mesh);
+const size = new THREE.Vector3();
+box3.getSize(size);
+
+const shape = new CANNON.Box(
+  new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2)
+);
 // 物理小球和网格小球一一对应
 const body = new CANNON.Body({
   // 碰撞体质量，单位是kg

@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-// 引入CSS2渲染器CSS2DRenderer
-import {
-  CSS3DRenderer,
-  CSS3DObject,
-} from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+
 import model from './mesh.js'; //模型对象
 import tag from './tag.js';
-
+import {
+  CSS2DRenderer, // ← 改成 CSS2D
+  CSS2DObject, // ← 改成 CSS2D
+} from 'three/examples/jsm/renderers/CSS2DRenderer.js'; // ← 注意路径也改了
 // 引入后期处理EffectComposer
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -56,18 +55,13 @@ renderer.setSize(width, height);
 document.body.appendChild(renderer.domElement);
 
 // 创建一个CSS2渲染器CSS2DRenderer
-const css3Renderer = new CSS3DRenderer();
-css3Renderer.setSize(width, height);
-document.body.appendChild(css3Renderer.domElement);
+const css2Renderer = new CSS2DRenderer(); // ← 改成 CSS2D
+css2Renderer.setSize(width, height);
+document.body.appendChild(css2Renderer.domElement);
 
-// HTML标签<div id="tag"></div>外面父元素叠加到canvas画布上且重合
-// 注意canvas网布布局方式不同，CSS相关代码写法也可能不同，不过你只要能让标签父元素叠加到canvas画布上上面且重合就行
-css3Renderer.domElement.style.position = 'absolute';
-css3Renderer.domElement.style.top = '0px';
-css3Renderer.domElement.style.pointerEvents = 'none';
-// 改变canvas画布在网页位置，标签父元素css3Renderer.domElement也要重新定位
-//  renderer.domElement.style.marginTop = '200px';
-//  css3Renderer.domElement.style.top = '200px';
+css2Renderer.domElement.style.position = 'absolute'; // ← 改变量名
+css2Renderer.domElement.style.top = '0px';
+css2Renderer.domElement.style.pointerEvents = 'none';
 
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
@@ -97,8 +91,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 // 渲染循环
 function render() {
   controls.update();
-  css3Renderer.render(scene, camera);
-
+  css2Renderer.render(scene, camera); // ← 改变量名
   // 使用后期处理渲染，而不是直接renderer.render
   composer.render();
 
@@ -112,8 +105,7 @@ window.onresize = () => {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
-  css3Renderer.setSize(width, height);
-
+  css2Renderer.setSize(width, height); // ← 改变量名
   // 重要：也要更新后期处理的分辨率
   composer.setSize(width, height);
 
@@ -165,6 +157,7 @@ window.addEventListener('click', (event) => {
       intersects[0].object.ancestors.add(tag);
       console.log('拾取到的对象:', selectedObject.name || selectedObject);
       tag.visible = true;
+      tag.element.style.display = 'block'; // ← 新增这行，显示div
 
       span.innerHTML = selectedObject.ancestors.name;
     } else {
@@ -180,4 +173,5 @@ window.addEventListener('click', (event) => {
 const close = document.getElementById('close');
 close.addEventListener('click', () => {
   tag.visible = false;
+  tag.element.style.display = 'none'; // ← 新增这行，隐藏div
 });

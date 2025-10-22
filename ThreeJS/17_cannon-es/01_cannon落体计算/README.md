@@ -145,6 +145,22 @@ world.addContactMaterial(contactMaterial);
 
 ## 4. 设计流程最佳实践
 
+```tcl
+1. 创建物理材质 (Material)
+   ↓
+2. 创建物理对象 (Body) + 绑定材质
+   ↓
+3. 创建物理世界 (World) + 设置重力
+   ↓
+4. 创建接触材质 (ContactMaterial) ← 核心！定义碰撞规则
+   ↓
+5. 物理计算 (world.step)
+   ↓
+6. 同步到视觉 (Three.js)
+```
+
+
+
 ### 4.1 完整设计流程
 
 ```mermaid
@@ -261,6 +277,42 @@ const stickyBallContact = new CANNON.ContactMaterial(
 );
 ```
 
+## 🔄 完整的物理循环
+
+```javascript
+// 初始状态
+body.position.y = 100
+body.velocity.y = 0
+
+// 第1帧 (0.016s 后)
+world.step(1/60)
+  → velocity.y = 0 + (-9.8 × 0.016) = -0.157 m/s
+  → position.y = 100 + (-0.157 × 0.016) ≈ 99.997 m
+
+// 第2帧
+  → velocity.y = -0.157 + (-9.8 × 0.016) = -0.314 m/s
+  → position.y = 99.997 + (-0.314 × 0.016) ≈ 99.992 m
+
+// ... 持续下落
+
+// 约 4.5 秒后（碰撞地面）
+position.y ≈ 0
+velocity.y ≈ -44.3 m/s  // 下落速度
+
+// 碰撞发生！应用 ContactMaterial
+  → 查找 sphereMaterial + groundMaterial
+  → friction = 0.1, restitution = 0.7
+  → velocity.y = -44.3 × (-0.7) = 31 m/s  // 向上反弹
+  → velocity.x *= 0.9  // 摩擦减速
+
+// 反弹后继续上升
+  → 上升到约 49m 高度
+  → 再次下落...
+
+// 多次反弹后，能量逐渐耗尽
+  → 最终静止在地面
+```
+
 ## 5. 高级技巧与优化
 
 ### 5.1 性能优化
@@ -320,57 +372,285 @@ world.addEventListener('postStep', () => {
 });
 ```
 
-## 6. 实际应用案例
 
-### 6.1 弹跳游戏
 
-- 小球持续弹跳，玩家控制移动方向
-- 调节restitution实现不同弹跳高度
 
-### 6.2 物理模拟
 
-- 真实材质模拟（玻璃、橡胶、金属）
-- 教育用途的物理演示
+# 答疑解惑
 
-### 6.3 粒子系统
+## 1. 为什么 groundBody 使用欧拉角？
 
-- 大量小球的碰撞效果
-- 组合不同材质创造复杂交互
-
-## 7. 调试技巧
-
-### 7.1 可视化调试
+### 答案：Cannon-es 和 Three.js 的旋转 API 不同
 
 ```javascript
-// 显示物理体边界
-const cannonDebugger = new CannonDebugger(scene, world);
+// ❌ Cannon-es 没有 rotation.x
+groundBody.rotation.x = -Math.PI / 2;  // 不存在这个API
 
-function animate() {
-  world.step(1/60);
-  cannonDebugger.update(); // 更新调试可视化
-  renderer.render(scene, camera);
-}
+// ✅ Cannon-es 使用四元数（Quaternion）
+groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 ```
 
-### 7.2 数据监控
+### 原因
+
+| 库            | 旋转表示方式         | API                   |
+| ------------- | -------------------- | --------------------- |
+| **Three.js**  | 欧拉角（Euler）      | `mesh.rotation.x/y/z` |
+| **Cannon-es** | 四元数（Quaternion） | `body.quaternion`     |
+
+### 为什么 Cannon-es 用四元数？
+
+**物理计算需要四元数**：
+
+- 四元数没有"万向节锁"问题
+- 旋转插值更平滑
+- 物理引擎计算旋转碰撞更精确
+
+**Three.js 提供欧拉角是为了方便**：
+
+- 欧拉角更直观（人类思维方式）
+- 内部仍然用四元数计算
+
+### 对比
 
 ```javascript
-// 监控物理参数
-console.log('Position:', body.position);
-console.log('Velocity:', body.velocity);
-console.log('Angular Velocity:', body.angularVelocity);
+// Three.js（方便人类）
+mesh.rotation.x = Math.PI / 2;  // "绕X轴转90度"
+
+// Cannon-es（适合物理计算）
+body.quaternion.setFromEuler(Math.PI / 2, 0, 0);  // 底层四元数
 ```
 
-## 8. 总结
+**结论**：不是不能用 `rotation.x`，而是 Cannon-es **没有提供**这个 API，只能用四元数。
 
-Cannon-es的反弹原理基于真实物理学，通过以下关键要素实现：
+------
 
-1. **准确的碰撞检测**
-2. **合理的材质参数设置**
-3. **高效的物理计算步进**
-4. **视觉与物理的精确同步**
+## 2. World 类似 Scene 吗？
 
-掌握这些原理和流程，你就能创造出真实、流畅的物理交互效果！
+### 答案：✅ **完全正确！**
 
+```javascript
+// Three.js
+const scene = new THREE.Scene();
+scene.add(mesh);        // 添加视觉对象
+scene.add(light);       // 添加光源
 
+// Cannon-es
+const world = new CANNON.World();
+world.addBody(body);               // 添加物理对象
+world.addContactMaterial(contact); // 添加碰撞规则
+```
 
+### 功能对比
+
+| Three.js Scene    | Cannon-es World       | 作用     |
+| ----------------- | --------------------- | -------- |
+| `scene.add(mesh)` | `world.addBody(body)` | 添加对象 |
+| `scene.children`  | `world.bodies`        | 对象列表 |
+| 管理渲染          | 管理物理计算          | 容器职责 |
+
+### 关键区别
+
+```javascript
+// Scene：视觉容器
+scene.add(mesh);      // 渲染用
+scene.add(light);     // 照明用
+// 不涉及物理
+
+// World：物理容器
+world.addBody(body);              // 物理计算用
+world.addContactMaterial(rule);   // 碰撞规则
+world.gravity.set(0, -9.8, 0);    // 设置重力
+// 不涉及渲染
+```
+
+**类比**：
+
+- Scene = 摄影棚（管视觉）
+- World = 物理实验室（管运动规律）
+
+------
+
+## 3. 碰撞计算是自动的吗？
+
+### 答案：✅ **完全正确！**
+
+```javascript
+// 你只需要定义规则
+const contactMaterial = new CANNON.ContactMaterial(
+  sphereMaterial,
+  groundMaterial,
+  {
+    friction: 0.1,
+    restitution: 0.7,
+  }
+);
+world.addContactMaterial(contactMaterial);
+
+// 物理引擎自动处理一切
+world.step(1/60);  // ← 内部自动：
+                   //   1. 检测碰撞
+                   //   2. 查找 ContactMaterial
+                   //   3. 应用 friction 和 restitution
+                   //   4. 计算碰撞后速度
+                   //   5. 更新位置
+```
+
+### 自动执行的内容
+
+```javascript
+world.step(1/60) 内部做了：
+
+1. 碰撞检测
+   for (body1 of world.bodies) {
+     for (body2 of world.bodies) {
+       if (colliding(body1, body2)) {
+         // 发现碰撞！
+       }
+     }
+   }
+
+2. 查找规则
+   rule = findContactMaterial(body1.material, body2.material);
+
+3. 应用物理
+   // 法向力（防止穿透）
+   applyNormalForce();
+   
+   // 摩擦力
+   body.velocity.x *= (1 - rule.friction);
+   
+   // 弹性
+   body.velocity.y *= -rule.restitution;
+
+4. 更新状态
+   body.position.y += body.velocity.y * dt;
+```
+
+### 你不需要做的事
+
+```javascript
+// ❌ 不需要手动检测碰撞
+if (ball.y <= ground.y) { ... }
+
+// ❌ 不需要手动计算反弹
+ball.velocity.y *= -0.7;
+
+// ❌ 不需要手动应用摩擦
+ball.velocity.x *= 0.9;
+```
+
+**结论**：你只负责**定义规则**，物理引擎负责**执行规则**。
+
+------
+
+## 4. 物理公式推导
+
+### 公式1：下落速度
+
+~~~javascript
+碰撞速度: v = √(2 × 9.8 × 100) ≈ 44.3 m/s
+```
+
+**公式来源**：自由落体运动
+```
+物理公式：v² = v₀² + 2gh
+
+其中：
+v₀ = 0 (初始速度为0)
+g = 9.8 m/s² (重力加速度)
+h = 100 m (下落高度)
+
+代入：
+v² = 0 + 2 × 9.8 × 100
+v² = 1960
+v = √1960 ≈ 44.3 m/s
+~~~
+
+### 公式2：反弹速度
+
+~~~javascript
+反弹速度: 44.3 × 0.7 ≈ 31 m/s
+```
+
+**公式来源**：恢复系数定义
+```
+restitution = 反弹速度 / 碰撞速度
+
+0.7 = v_反弹 / 44.3
+v_反弹 = 44.3 × 0.7 = 31 m/s
+~~~
+
+### 公式3：反弹高度
+
+~~~javascript
+反弹高度: (31²) / (2 × 9.8) ≈ 49m
+```
+**公式来源**：逆向使用自由落体公式
+```
+从 v² = 2gh 可得：
+h = v² / (2g)
+
+代入反弹速度：
+h = 31² / (2 × 9.8)
+h = 961 / 19.6
+h ≈ 49 m
+```
+
+### 完整推导
+```
+步骤1：下落过程
+h₁ = 100 m (初始高度)
+v₁ = √(2gh₁) = √(2×9.8×100) = 44.3 m/s (碰撞速度)
+
+步骤2：碰撞（应用 restitution）
+v₂ = v₁ × restitution = 44.3 × 0.7 = 31 m/s (反弹速度)
+
+步骤3：反弹高度
+h₂ = v₂² / (2g) = 31² / (2×9.8) = 49 m
+
+验证：
+h₂ / h₁ = 49 / 100 = 0.49 = 0.7² = restitution²  ✅
+```
+
+### 核心规律
+```
+反弹高度 = 原高度 × restitution²
+
+例子：
+restitution = 0.7
+  → 反弹高度 = 100 × 0.7² = 49 m
+
+restitution = 0.5
+  → 反弹高度 = 100 × 0.5² = 25 m
+
+restitution = 1.0
+  → 反弹高度 = 100 × 1.0² = 100 m (完全弹性)
+```
+
+---
+
+## 📌 总结
+
+### 问题1：欧拉角 vs rotation.x
+- Cannon-es 只提供四元数 API（物理计算需要）
+- Three.js 提供欧拉角 API（方便使用）
+- 底层都是四元数
+
+### 问题2：World vs Scene
+- ✅ 完全类似
+- World = 物理容器
+- Scene = 视觉容器
+
+### 问题3：碰撞计算
+- ✅ 完全自动
+- 你定义规则（ContactMaterial）
+- 引擎执行计算（world.step）
+
+### 问题4：物理公式
+```
+下落速度: v = √(2gh)
+反弹速度: v_反弹 = v_下落 × restitution
+反弹高度: h = v² / (2g)
+
+关键规律: 反弹高度 = 原高度 × restitution²
+~~~

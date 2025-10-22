@@ -58,7 +58,7 @@ addEventListener('click',(event)=>{
   const px=event.offsetX
   const py=event.offsetY
   // 屏幕坐标px,py转WebGL标准设备坐标x,y
-  // width,height表示canvas画布宽高度
+  // width,height表示canva s画布宽高度
   const x=(px/width)*2-1
   const y=-(py/height)*2+1
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import model from './mesh.js';
-import {clock,mixer} from './mesh.js'
+import { clock, mixer } from './mesh.js';
 //场景
 const scene = new THREE.Scene();
 scene.add(model); //模型对象添加到场景中
@@ -42,9 +42,9 @@ document.body.appendChild(renderer.domElement);
 
 // 渲染循环 - 将动画更新合并到这里
 function render() {
-  const deltaTime=clock.getDelta()
-  if(mixer){
-    mixer.update(deltaTime)
+  const deltaTime = clock.getDelta();
+  if (mixer) {
+    mixer.update(deltaTime);
   }
   renderer.render(scene, camera);
   requestAnimationFrame(render);

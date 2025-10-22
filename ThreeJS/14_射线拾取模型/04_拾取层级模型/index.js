@@ -63,7 +63,7 @@ outlinePass.edgeThickness=4
 outlinePass.edgeStrength=6
 composer.addPass(outlinePass)
 
-// 创建伽玛效正通道
+// 创建FXAA通道
 const fxaaPass=new ShaderPass(FXAAShader)
 const pixelRatio=renderer.getPixelRatio()
 fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pixelRatio);

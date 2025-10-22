@@ -176,7 +176,7 @@ window.addEventListener('click', event => {
       }
     }
     if (targetModel) {
-      outlinePass.selectedObjects = [selectedObject];
+      outlinePass.selectedObjects = [targetModel];
 
       // 定位和内容设置
       const pos = new THREE.Vector3();
@@ -184,7 +184,9 @@ window.addEventListener('click', event => {
       group.getObjectByName(targetModel.name + '标注').getWorldPosition(pos);
       tag.position.copy(pos);
       tag.position.y += 8; // 向上偏移
-
+      if (tag.parent !== scene) {
+        scene.add(tag);
+      }
       // 2. 使用requestAnimationFrame将动画推迟到下一帧
       // 这就给了CSS3DRenderer足够的时间去把 `display` 从 `none` 改为 `block`
       requestAnimationFrame(() => {
@@ -193,8 +195,10 @@ window.addEventListener('click', event => {
           opacityTween.stop();
         }
 
-        tagElement.style.pointerEvents = 'auto'; // 变得可点击
-
+        // ✅ 显示元素
+        tagElement.style.display = 'block'; // 对应 display: 'none'
+        // 或者 tagElement.style.visibility = 'visible';
+        tagElement.style.pointerEvents = 'auto';
         // 现在，在一个可见的元素上开始动画
         opacityTween = new TWEEN.Tween({
           opacity: parseFloat(tagElement.style.opacity),
@@ -245,7 +249,8 @@ function hideTagWithFade() {
     })
     .onComplete(() => {
       console.log('淡出动画完成');
-      scene.remove(tag);
+      // scene.remove(tag);
+      tagElement.style.display = 'none';
     })
     .start();
 

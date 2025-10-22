@@ -8,7 +8,7 @@ THREE.Vector3 在 Three.js 中是一个非常核心和基础的类，它最主�
 
 - 所有三维物体 (Object3D) 都有一个 .position 属性，它就是一个 Vector3 实例，用来确定物体在场景中的位置。你的代码 mesh1.position.copy(B) 就是把 mesh1 的位置设置成 B 点的坐标。
 
-1. 表示方向和大小 (Direction and Magnitude):
+2. 表示方向和大小 (Direction and Magnitude):
 
 - 一个三维向量也可以表示一个从原点 (0,0,0) 指向 (x,y,z) 的箭头。这个箭头既有方向，也有长度（大小）。
 
