@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CameraRig 原理 - Three.js原生实现</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: white;
+      overflow: hidden;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .info-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 25px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      max-width: 400px;
+      font-size: 14px;
+      z-index: 10;
+    }
+
+    .info-panel h3 {
+      color: #00d9ff;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+    }
+
+    .data-label {
+      color: #888;
+    }
+
+    .data-value {
+      color: #00ff88;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+    }
+
+    .code-box {
+      background: rgba(0, 100, 150, 0.2);
+      border: 1px solid rgba(0, 200, 255, 0.3);
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-x: auto;
+    }
+
+    .keyword { color: #a78bfa; }
+    .function { color: #34d399; }
+    .number { color: #fbbf24; }
+    .comment { color: #666; }
+
+    .crosshair {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: 2px solid #00ff88;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+    }
+
+    .crosshair::before,
+    .crosshair::after {
+      content: '';
+      position: absolute;
+      background: #00ff88;
+    }
+
+    .crosshair::before {
+      width: 2px;
+      height: 20px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .crosshair::after {
+      width: 20px;
+      height: 2px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .instruction {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 15px 30px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      z-index: 10;
+      text-align: center;
+    }
+
+    .smoothing-control {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      z-index: 10;
+      min-width: 250px;
+    }
+
+    .smoothing-control h4 {
+      color: #00d9ff;
+      margin-bottom: 15px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #333;
+      outline: none;
+      -webkit-appearance: none;
+      margin-bottom: 10px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  
+  <div class="crosshair" id="crosshair"></div>
+
+  <div class="info-panel">
+    <h3>📊 实时数据</h3>
+    
+    <div class="data-row">
+      <span class="data-label">鼠标 X:</span>
+      <span class="data-value" id="pointerX">0.000</span>
+    </div>
+    <div class="data-row">
+      <span class="data-label">鼠标 Y:</span>
+      <span class="data-value" id="pointerY">0.000</span>
+    </div>
+    
+    <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+    
+    <div class="data-row">
+      <span class="data-label">目标相机 X:</span>
+      <span class="data-value" id="targetX">-1.000</span>
+    </div>
+    <div class="data-row">
+      <span class="data-label">目标相机 Y:</span>
+      <span class="data-value" id="targetY">0.500</span>
+    </div>
+    <div class="data-row">
+      <span class="data-label">目标相机 Z:</span>
+      <span class="data-value" id="targetZ">5.500</span>
+    </div>
+    
+    <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+    
+    <div class="data-row">
+      <span class="data-label">实际相机 X:</span>
+      <span class="data-value" id="actualX">-1.000</span>
+    </div>
+    <div class="data-row">
+      <span class="data-label">实际相机 Y:</span>
+      <span class="data-value" id="actualY">0.500</span>
+    </div>
+    <div class="data-row">
+      <span class="data-label">实际相机 Z:</span>
+      <span class="data-value" id="actualZ">5.500</span>
+    </div>
+
+    <div class="code-box">
+      <span class="comment">// React Three Fiber版本</span><br>
+      <span class="keyword">function</span> <span class="function">CameraRig</span>() {<br>
+      &nbsp;&nbsp;<span class="function">useFrame</span>((state, delta) => {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;easing.<span class="function">damp3</span>(<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;state.camera.position,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;targetPos,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="number">0.5</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;delta<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;state.camera.<span class="function">lookAt</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>)<br>
+      &nbsp;&nbsp;})<br>
+      }
+    </div>
+  </div>
+
+  <div class="smoothing-control">
+    <h4>⚙️ 平滑度控制</h4>
+    <label style="font-size: 13px; color: #888; display: block; margin-bottom: 5px;">
+      smoothing: <span id="smoothingValue" style="color: #00ff88;">0.5</span>
+    </label>
+    <input type="range" id="smoothing" min="0.1" max="1" step="0.05" value="0.5">
+    <small style="color: #666; display: block; margin-top: 5px;">
+      值越小 = 移动越快<br>
+      值越大 = 移动越慢
+    </small>
+  </div>
+
+  <div class="instruction">
+    🖱️ 移动鼠标，观察相机如何跟随
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // ==========================================
+    // Three.js 原生实现的 CameraRig
+    // ==========================================
+
+    let scene, camera, renderer;
+    let viewportWidth, viewportHeight;
+    
+    // 鼠标位置（归一化坐标：-1到1）
+    const pointer = { x: 0, y: 0 };
+    
+    // 目标相机位置
+    const targetCameraPosition = { x: -1, y: 0.5, z: 5.5 };
+    
+    // 平滑度
+    let smoothing = 0.5;
+    
+    // 时钟
+    const clock = new THREE.Clock();
+
+    // 初始化场景
+    function init() {
+      // 创建场景
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0f172a);
+
+      // 创建相机
+      camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(-1, 0.5, 5.5);
+
+      // 创建渲染器
+      const container = document.getElementById('canvas-container');
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      // 计算视口尺寸（3D世界单位）
+      calculateViewport();
+
+      // 创建场景内容
+      createSceneContent();
+
+      // 监听事件
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('mousemove', onMouseMove);
+      document.getElementById('smoothing').addEventListener('input', onSmoothingChange);
+
+      // 开始动画
+      animate();
+    }
+
+    // 计算视口尺寸
+    function calculateViewport() {
+      const distance = camera.position.z;
+      const vFov = camera.fov * Math.PI / 180;
+      viewportHeight = 2 * Math.tan(vFov / 2) * distance;
+      viewportWidth = viewportHeight * camera.aspect;
+      
+      console.log('Viewport:', { width: viewportWidth, height: viewportHeight });
+    }
+
+    // 创建场景内容
+    function createSceneContent() {
+      // 添加网格地面
+      const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+      scene.add(gridHelper);
+
+      // 添加中心球体
+      const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+      const sphereMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x00ff88,
+        metalness: 0.5,
+        roughness: 0.5
+      });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.set(0, 0.5, 0);
+      scene.add(sphere);
+
+      // 添加多个彩色立方体
+      const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d, 0xa8e6cf, 0xffa8a8];
+      for (let i = 0; i < 5; i++) {
+        const boxGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const boxMaterial = new THREE.MeshStandardMaterial({ color: colors[i] });
+        const box = new THREE.Mesh(boxGeometry, boxMaterial);
+        const angle = (i / 5) * Math.PI * 2;
+        box.position.set(
+          Math.cos(angle) * 3,
+          0.25,
+          Math.sin(angle) * 3
+        );
+        scene.add(box);
+      }
+
+      // 添加环境光
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      // 添加点光源
+      const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+      pointLight.position.set(5, 5, 5);
+      scene.add(pointLight);
+    }
+
+    // 鼠标移动事件
+    function onMouseMove(event) {
+      // 🎯 关键！将屏幕坐标转换为归一化坐标（-1到1）
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // 更新十字准星位置
+      const crosshair = document.getElementById('crosshair');
+      crosshair.style.left = event.clientX + 'px';
+      crosshair.style.top = event.clientY + 'px';
+
+      // 🎯 计算目标相机位置（和React Three Fiber完全一样的公式！）
+      targetCameraPosition.x = -1 + (pointer.x * viewportWidth) / 3;
+      targetCameraPosition.y = (1 + pointer.y) / 2;
+      targetCameraPosition.z = 5.5;
+
+      // 更新UI显示
+      updateUI();
+    }
+
+    // 平滑度改变事件
+    function onSmoothingChange(event) {
+      smoothing = parseFloat(event.target.value);
+      document.getElementById('smoothingValue').textContent = smoothing.toFixed(2);
+    }
+
+    // 窗口大小改变
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      calculateViewport();
+    }
+
+    // 🌟 这就是 easing.damp3 的原生实现！
+    function damp3(current, target, smoothing, delta) {
+      // 计算插值因子
+      const t = 1 - Math.pow(1 - smoothing, delta * 60);
+      
+      // 平滑插值（lerp）
+      current.x += (target.x - current.x) * t;
+      current.y += (target.y - current.y) * t;
+      current.z += (target.z - current.z) * t;
+    }
+
+    // 更新UI显示
+    function updateUI() {
+      document.getElementById('pointerX').textContent = pointer.x.toFixed(3);
+      document.getElementById('pointerY').textContent = pointer.y.toFixed(3);
+      
+      document.getElementById('targetX').textContent = targetCameraPosition.x.toFixed(3);
+      document.getElementById('targetY').textContent = targetCameraPosition.y.toFixed(3);
+      document.getElementById('targetZ').textContent = targetCameraPosition.z.toFixed(3);
+      
+      document.getElementById('actualX').textContent = camera.position.x.toFixed(3);
+      document.getElementById('actualY').textContent = camera.position.y.toFixed(3);
+      document.getElementById('actualZ').textContent = camera.position.z.toFixed(3);
+    }
+
+    // 动画循环（这就是 useFrame 的原生实现！）
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // 获取时间增量（delta）
+      const delta = clock.getDelta();
+
+      // 🎯 核心！使用平滑插值更新相机位置
+      damp3(camera.position, targetCameraPosition, smoothing, delta);
+
+      // 🎯 让相机始终看向原点
+      camera.lookAt(0, 0, 0);
+
+      // 渲染场景
+      renderer.render(scene, camera);
+    }
+
+    // 启动
+    init();
+  </script>
+</body>
+</html>

@@ -24,7 +24,7 @@ const pointLight = new THREE.PointLight(0x00ffff)
 pointLight.intensity = 3.0
 // 控制光源衰减
 pointLight.decay = 0.1
-// 设置光源位置
+// 设置光源位置  
 pointLight.position.set(400, 700, 300)
 // 设置光源距离
 pointLight.distance = 30000
@@ -35,7 +35,7 @@ scene.add(pointLight)
 const width = window.innerWidth
 const height = window.innerHeight
 // 创建一个透视投影相机对象
-const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000)
+const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000) 
 
 camera.position.set(200, 200, 200)
 // camera.position.set(-1000, 0, 0)
