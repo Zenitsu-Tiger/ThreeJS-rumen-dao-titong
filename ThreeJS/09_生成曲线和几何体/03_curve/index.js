@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import model from "./06_扫描生成通道·.js";
+import model from "./model.js";
 
 //场景
 const scene = new THREE.Scene();
