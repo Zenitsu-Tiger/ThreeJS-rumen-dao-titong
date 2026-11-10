@@ -1,96 +1,98 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import group from "./mesh.js";
+// 从 mesh.js 导入 group 对象和平面的 z 方向尺寸
+import group, { planeZSize } from "./mesh.js";
 
-//场景
+// 场景
 const scene = new THREE.Scene();
-scene.add(group); //模型对象添加到场景中
+scene.add(group);
 
-//辅助观察的坐标系
+// 辅助观察的坐标系
 const axesHelper = new THREE.AxesHelper(100);
 scene.add(axesHelper);
 
-// 大幅降低环境光强度，让聚光源效果更明显
-const ambient = new THREE.AmbientLight(0xffffff, 0.05);
+// 环境光，提供基础照明
+const ambient = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambient);
 
-// 聚光源
-const spotLight = new THREE.SpotLight(0xffffff, 1);
-// 手动设置光照强度
-spotLight.intensity = 1000; // 大幅增加强度
-// 设置聚光源的锥形角度
-spotLight.angle = Math.PI / 6; // 缩小角度，让光斑更集中
-// 设置聚光源的位置
-spotLight.position.set(0, 50, 0);
-// 设置聚光源投射阴影
-spotLight.castShadow = true;
-// 优化阴影贴图质量
-spotLight.shadow.mapSize.width = 1024;
-spotLight.shadow.mapSize.height = 1024;
-// 设置聚光源的照射位置
-// spotLight.target是一个模型对象Object3D，默认在坐标原点
-spotLight.target.position.set(0, 0, 0);
-scene.add(spotLight.target);
-// 聚光源必须手动添加到scene
-scene.add(spotLight);
+// 平行光：从 (100,100,0) 照向原点，45° 斜射，高 100 的立方体影子长 100
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+directionalLight.position.set(100, 100, 0);
+scene.add(directionalLight);
+scene.add(directionalLight.target); // target 加入场景，才能跟着移动
+directionalLight.castShadow = true;
 
-// 暂时移除聚光源辅助对象，避免视觉干扰
-// const spotLightHelper = new THREE.SpotLightHelper(spotLight);
-// scene.add(spotLightHelper);
+// 阴影相机（正投影相机）的范围：一个长方体盒子
+// left/right/top/bottom 是"光源视角"下的方向，不是地面的 x/z
+// 本场景光源与目标 z 相同，所以 left/right 恰好对应世界 z 轴
+directionalLight.shadow.camera.left = -200;
+directionalLight.shadow.camera.right = 200;
+directionalLight.shadow.camera.top = 200;
+directionalLight.shadow.camera.bottom = -200;
+directionalLight.shadow.camera.near = 0.5; // 盒子沿光线方向的前边界
+directionalLight.shadow.camera.far = 1000; // 盒子沿光线方向的后边界
 
-// 聚光源辅助对象
-const spotLightHelper = new THREE.SpotLightHelper(spotLight);
-scene.add(spotLightHelper);
+// 阴影贴图像素：范围 400 / 128 ≈ 3.13 单位/像素，故意调低用于观察锯齿
+// 默认 512（≈0.78 单位/像素），正常项目常用 1024 或 2048
+directionalLight.shadow.mapSize.set(128, 128);
 
-const width = window.innerWidth; //canvas画布高度
-const height = window.innerHeight; //canvas画布宽度
+// 可视化阴影相机的范围
+const cameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+scene.add(cameraHelper);
+
+const width = window.innerWidth; // canvas 画布宽度
+const height = window.innerHeight; // canvas 画布高度
 
 const camera = new THREE.PerspectiveCamera(90, width / height, 1, 3000);
-camera.position.set(92, 113, 85);
+camera.position.set(300, 300, 300);
 camera.lookAt(0, 0, 0);
 
-// WebGL渲染器设置
+// WebGL 渲染器
 const renderer = new THREE.WebGLRenderer({
-  antialias: true, //开启优化锯齿
+  antialias: true,
 });
 renderer.shadowMap.enabled = true; // 开启阴影渲染
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.setPixelRatio(window.devicePixelRatio); //防止输出模糊
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(width, height);
-
-// 将渲染器的canvas添加到body中
 document.body.appendChild(renderer.domElement);
+
+// --- 光源平移动画 ---
+// 让阴影盒子的边缘对齐平面边缘：850/2 - 200 = 225
+// 注意：只有当 left/right 对应世界 z 轴时（光源与目标 z 相同）这个算法才成立
+const zBoundary = planeZSize / 2 - directionalLight.shadow.camera.right;
+let lightZSpeed = 3;
+directionalLight.position.z = -zBoundary;
+directionalLight.target.position.z = -zBoundary;
+
+// 是否播放动画：false 时光源停在 z=-225，只有 z=-300/-200/-100 三个立方体有阴影
+const animate = false;
+
+// 相机控件
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false; // 禁止右键拖拽
+controls.addEventListener("change", () => {
+  console.log("dis", controls.getDistance());
+});
+
 // 渲染循环
 function render() {
+  if (animate) {
+    // 同时平移 position 和 target，保持光照方向不变
+    directionalLight.position.z += lightZSpeed;
+    directionalLight.target.position.z += lightZSpeed;
+    // 到达边界就反向
+    if (
+      directionalLight.position.z > zBoundary ||
+      directionalLight.position.z < -zBoundary
+    ) {
+      lightZSpeed = -lightZSpeed;
+    }
+  }
   renderer.render(scene, camera);
   requestAnimationFrame(render);
 }
 render();
-
-const controls = new OrbitControls(camera, renderer.domElement);
-// 禁止右键拖拽
-controls.enablePan = false;
-// 禁止缩放
-// controls.enableZoom = false;
-
-// 约束controls的最大距离和最小距离
-controls.minDistance = 100;
-controls.maxDistance = 500;
-
-// 获取相机和目标观察点的距离,一般拿来辅助设置上面的minDistance和maxDistance
-// const dis = controls.getDistance();
-// console.log("dis", dis);
-// 在调整距离的过程中计算dis
-controls.addEventListener("change", () => {
-  const dis = controls.getDistance();
-  console.log("dis", dis);
-});
-
-// controls.minPolarAngle = 0;
-// 控制旋转范围不超过x轴以下
-// 这里正值和负值都是从0到π/2
-//  controls.maxPolarAngle = Math.PI / 2;
 
 // 画布跟随窗口变化
 window.onresize = function () {

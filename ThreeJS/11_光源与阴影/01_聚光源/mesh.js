@@ -1,24 +1,30 @@
 import * as THREE from "three";
 
+// 平面 z 方向尺寸，导出给 index.js 计算光源动画边界
+export const planeZSize = 850;
+
 const group = new THREE.Group();
 
-// 创建一个平面来接收阴影
-const planeGeometry = new THREE.PlaneGeometry(200, 200);
-const planeMaterial = new THREE.MeshStandardMaterial({
-  color: 0x888888,
-  side: THREE.DoubleSide,
-});
+// 地面：接收阴影
+const planeGeometry = new THREE.PlaneGeometry(400, planeZSize);
+const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x999999 });
 const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 plane.rotation.x = -Math.PI / 2;
-plane.receiveShadow = true; // 平面接收阴影
+plane.receiveShadow = true;
 group.add(plane);
 
-// 创建一个立方体来投射阴影
-const cubeGeometry = new THREE.BoxGeometry(20, 20, 20);
-const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+// 立方体模板：投射阴影（clone 会复制 castShadow）
+const cubeGeometry = new THREE.BoxGeometry(50, 100, 50);
+const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0x00ffff });
 const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-cube.castShadow = true; // 立方体投射阴影
-cube.position.y = 10.1; // 将立方体略微抬高，防止与平面Z-fighting
-group.add(cube);
+cube.position.y = 50; // 高 100，抬高一半让底面贴地
+cube.castShadow = true;
+
+// 沿 z 轴排 7 个：z = -300, -200, ..., 300
+for (let i = -3; i < 4; i++) {
+  const mesh2 = cube.clone();
+  mesh2.position.z = 100 * i;
+  group.add(mesh2);
+}
 
 export default group;

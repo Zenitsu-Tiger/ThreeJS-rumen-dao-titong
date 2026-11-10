@@ -2,123 +2,126 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import group from "./mesh.js";
 import gui from "./gui.js";
-//场景
-const scene = new THREE.Scene();
-scene.add(group); //模型对象添加到场景中
 
-//辅助观察的坐标系
+// 场景
+const scene = new THREE.Scene();
+scene.add(group);
+
+// 辅助观察的坐标系
 const axesHelper = new THREE.AxesHelper(100);
 scene.add(axesHelper);
 
+// 环境光
 const ambient = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambient);
-// 添加gui
 gui.add(ambient, "intensity", 0, 10).name("环境光强度");
-const width = window.innerWidth; //canvas画布高度
-const height = window.innerHeight; //canvas画布宽度
 
-// 平行光默认指向座标原点
+// ---------- 按模型尺寸算阴影参数 ----------
+// 模型约 2000 × 17 × 2000（mesh.js 里 Box3 打印出来的值）
+const MODEL_HALF = 1000; // 模型半宽：2000 / 2
+// 光源绕 y 轴转到斜 45° 时，要盖住的是对角线：1000 × 1.414 ≈ 1415
+const SHADOW_HALF = Math.ceil(MODEL_HALF * Math.SQRT2);
+const LIGHT_Y = 900; // 光源高度
+
+// 平行光（默认照向原点）
 const directionalLight = new THREE.DirectionalLight(0xffffff, 5);
-directionalLight.position.set(100, 60, 0);
 scene.add(directionalLight);
 
 const directionalLightHelper = new THREE.DirectionalLightHelper(
   directionalLight,
-  5
+  50
 );
 scene.add(directionalLightHelper);
 
-// 添加平行光的阴影效果
-// directionalLight.castShadow = true;
-
-// 创建一个GUI文件夹来组织平行光相关的控制器
+// ---------- GUI：光源位置 ----------
 const lightFolder = gui.addFolder("平行光调试");
-
-// 1. 将强度控制器添加到文件夹中
 lightFolder.add(directionalLight, "intensity", 0, 10).name("光照强度");
 
-// 2. 创建一个对象来集中管理光源位置参数
+// R = 光源离 y 轴的水平距离，angle = 绕 y 轴转的角度
+// R 要大于模型半对角线 1415，整个模型才都在光源前方
 const lightPositionControl = {
-  R: 100, // 半径
-  angle: 0, // 角度
+  R: 1500,
+  angle: 0,
 };
 
-// 3. 定义一个函数，用于根据R和angle更新光源位置
 function updateLightPosition() {
-  const x = lightPositionControl.R * Math.cos(lightPositionControl.angle);
-  const z = lightPositionControl.R * Math.sin(lightPositionControl.angle);
-  directionalLight.position.x = x;
-  directionalLight.position.z = z;
-  directionalLightHelper.update(); // 光源位置变化，辅助对象也需要更新
+  directionalLight.position.set(
+    lightPositionControl.R * Math.cos(lightPositionControl.angle),
+    LIGHT_Y,
+    lightPositionControl.R * Math.sin(lightPositionControl.angle)
+  );
+  directionalLightHelper.update(); // 光源位置变了，辅助对象也要更新
 }
-updateLightPosition(); // 初始化一次位置
+updateLightPosition();
 
-// 4. 在文件夹中为R和angle创建滑块，并在变化时调用更新函数
 lightFolder
-  .add(lightPositionControl, "R", 0, 300)
-  .name("半径 (R)")
+  .add(lightPositionControl, "R", 0, 3000)
+  .name("水平距离 (R)")
   .onChange(updateLightPosition);
 lightFolder
   .add(lightPositionControl, "angle", 0, 2 * Math.PI)
   .name("角度 (angle)")
   .onChange(updateLightPosition);
 
-
-// 设置产生阴影的光源对象，开启光源阴影的计算功能
+// ---------- 阴影 ----------
 directionalLight.castShadow = true;
 
+const cam = directionalLight.shadow.camera;
+cam.left = -SHADOW_HALF;
+cam.right = SHADOW_HALF;
+cam.top = SHADOW_HALF;
+cam.bottom = -SHADOW_HALF;
+cam.near = 1;
+// 最远的点：光源距离（R=3000 时约 3132）+ 模型半对角线 1415 ≈ 4547
+cam.far = 5000;
 
-// 设置三维场景计算阴影的范围
-directionalLight.shadow.camera.left=-100
-directionalLight.shadow.camera.right=100
-directionalLight.shadow.camera.top=100
-directionalLight.shadow.camera.bottom=-100
-directionalLight.shadow.camera.near=1
-directionalLight.shadow.camera.far=1000
-
-// 2. 增强阴影质量
+// 精度：范围宽 2830 / 2048 ≈ 1.38 单位一格
 directionalLight.shadow.mapSize.set(2048, 2048);
-directionalLight.shadow.radius = 3;
+directionalLight.shadow.radius = 3; // 阴影边缘模糊程度
 
-// 3. 【关键】每次修改相机属性后，必须手动更新投影矩阵
-directionalLight.shadow.camera.updateProjectionMatrix();
-
-
-// 4. 创建 CameraHelper 来可视化【真实】的阴影范围
-const cameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+// 阴影范围辅助框（创建时会自动更新一次投影矩阵）
+const cameraHelper = new THREE.CameraHelper(cam);
 scene.add(cameraHelper);
 
-// 5. 【可选但推荐】更新你的GUI，让它也反映正确的范围
-const shadowFolder = gui.addFolder("平行光阴影");
-const cam = directionalLight.shadow.camera;
+// 之后再改范围：投影矩阵和辅助框都要手动更新
+function updateShadowCamera() {
+  cam.updateProjectionMatrix();
+  cameraHelper.update();
+}
 
-// 让GUI控制器反映并能修改新的、正确的范围
-shadowFolder.add(cam, 'left', -1500, 0).onChange(() => {
-    cam.updateProjectionMatrix();
-    cameraHelper.update();
-});
-shadowFolder.add(cam, 'right', 0, 1500).onChange(() => {
-    cam.updateProjectionMatrix();
-    cameraHelper.update();
-});
-// ...可以为 top 和 bottom 也添加控制器
+// ---------- GUI：阴影范围 ----------
+const shadowFolder = gui.addFolder("平行光阴影");
+const shadowControl = { half: SHADOW_HALF };
+shadowFolder
+  .add(shadowControl, "half", 50, 2000)
+  .name("范围半宽")
+  .onChange((v) => {
+    cam.left = -v;
+    cam.right = v;
+    cam.top = v;
+    cam.bottom = -v;
+    updateShadowCamera();
+  });
+shadowFolder.add(cam, "far", 100, 6000).name("far").onChange(updateShadowCamera);
+
+// ---------- 相机、渲染器 ----------
+const width = window.innerWidth; // canvas 画布宽度
+const height = window.innerHeight; // canvas 画布高度
 
 const camera = new THREE.PerspectiveCamera(90, width / height, 1, 3000);
-camera.position.set(100, 100, 100); 
+camera.position.set(100, 100, 100);
 camera.lookAt(0, 0, 0);
 
-// WebGL渲染器设置
-const renderer = new THREE.WebGLRenderer({
-  antialias: true, //开启优化锯齿
-});
-renderer.shadowMap.enabled = true; // 开启阴影渲染
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.setPixelRatio(window.devicePixelRatio); //防止输出模糊
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true; // 开启阴影
+renderer.shadowMap.type = THREE.VSMShadowMap; // 柔和的阴影边缘
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(width, height);
-// 
-renderer.shadowMap.type=THREE.VSMShadowMap
-// 将渲染器的canvas添加到body中
 document.body.appendChild(renderer.domElement);
+
+// 相机控件
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false; // 禁止右键拖拽
 
 // 渲染循环
 function render() {
@@ -126,29 +129,6 @@ function render() {
   requestAnimationFrame(render);
 }
 render();
-
-const controls = new OrbitControls(camera, renderer.domElement);
-// 禁止右键拖拽
-controls.enablePan = false;
-// 禁止缩放
-// controls.enableZoom = false;
-
-// 约束controls的最大距离和最小距离
-/* controls.minDistance = 100;
-controls.maxDistance = 500; */
-
-// 获取相机和目标观察点的距离,一般拿来辅助设置上面的minDistance和maxDistance
-// const dis = controls.getDistance();
-// console.log("dis", dis);
-// 在调整距离的过程中计算dis
-controls.addEventListener("change", () => {
-  const dis = controls.getDistance();
-});
-
-// controls.minPolarAngle = 0;
-// 控制旋转范围不超过x轴以下
-// 这里正值和负值都是从0到π/2
-//  controls.maxPolarAngle = Math.PI / 2;
 
 // 画布跟随窗口变化
 window.onresize = function () {
@@ -158,11 +138,3 @@ window.onresize = function () {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 };
-
-
-// 手动强制设置为很小的值
-directionalLight.shadow.camera.left = -50;
-directionalLight.shadow.camera.right = 50;
-directionalLight.shadow.camera.updateProjectionMatrix();
-
-// 然后观察 CameraHelper 是否变化
