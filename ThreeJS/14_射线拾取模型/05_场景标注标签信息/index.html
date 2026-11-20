@@ -1,25 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <style>
-        body {
-            margin: 0;
-        }
-    </style>
-</head>
-<body>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>场景标注标签信息</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+    .label-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .device-label {
+      padding: 6px 10px;
+      border: 1px solid #53e6f1;
+      border-radius: 4px;
+      background: #142233;
+      color: #fff;
+      font: 600 14px/1.4 system-ui, sans-serif;
+      white-space: nowrap;
+    }
+  </style>
   <script type="importmap">
     {
       "imports": {
-        "three": "https://esm.sh/three@0.174.0/build/three.module.js",
-        "three/examples/jsm/": "https://esm.sh/three@0.174.0/examples/jsm/",
-        "three/addons/": "https://esm.sh/three@0.174.0/examples/jsm/"
+        "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.174.0/examples/jsm/"
       }
     }
   </script>
-<script type="module" src="./index.js"></script>
+</head>
+<body>
+  <script type="module" src="./index.js"></script>
 </body>
 </html>

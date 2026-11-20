@@ -1,14 +1,7 @@
-import * as THREE from 'three'
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js'
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-
-const group = new THREE.Group();
-const loader=new GLTFLoader()
-loader.load('./工厂.glb',(gltf)=>{
-    console.log(gltf)
-    const model=gltf.scene
-    group.add(model)
-})
-
-
-export default group
+export async function loadFactory() {
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync(new URL("./工厂.glb", import.meta.url).href);
+  return gltf.scene;
+}
