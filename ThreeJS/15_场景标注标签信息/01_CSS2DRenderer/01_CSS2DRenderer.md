@@ -1,242 +1,201 @@
-# 使用 CSS2DRenderer 在 Three.js 场景中添加 HTML 标签
+# 01 · CSS2DRenderer 基础用法
 
-在 Three.js 项目中，我们经常需要在 3D 场景中的特定物体上显示标签、名称或信息面板。直接使用 WebGL 绘制文本比较复杂，而 `CSS2DRenderer` 提供了一种优雅的解决方案：**将普通的 HTML 元素作为标签，并让它自动跟随 3D 物体**。
+在 Three.js 中，直接用 WebGL 画文字很麻烦，而 `CSS2DRenderer` 可以把普通 HTML 元素变成跟随 3D 物体的标签。本节基于 Three.js `0.174.0` 的 `index.html`、`index.js` 和 `mesh.js`，演示最基础的「网页 `<div>` → 3D 场景标签」流程。
 
-这份笔记将详细介绍 `CSS2DRenderer` 的作用、原理和完整使用方法。
+## 路线图
 
-### 1️⃣ 为什么需要 CSS2DRenderer？—— 坐标转换的挑战
+1. 用 `CSS2DObject` 把 HTML 里的 `<div id="tag">` 包装成三维标签对象，放到目标坐标并加入场景。
+2. 创建 `CSS2DRenderer` 覆盖在 WebGL 画布上方，在渲染循环和窗口缩放时与 `WebGLRenderer` 同步更新第 1 步放进去的标签。
 
-要把一个 HTML 元素（比如 `<div>`）精确定位到 3D 场景中某个物体的位置，我们需要解决一个核心问题：**如何将物体的三维世界坐标 (x, y, z) 转换为屏幕上的二维像素坐标 (left, top)？**
+---
 
-手动计算这个过程相当繁琐，步骤如下：
+## 1. 把 HTML 元素包装成 `CSS2DObject` 放进场景
 
-1.  **获取物体的世界坐标**：从物体的 `matrixWorld` 中提取。
-2.  **投影到相机**：将世界坐标投影到相机的裁剪空间，得到归一化设备坐标 (NDC)，其 x, y 值的范围都在 `[-1, 1]` 之间。
-3.  **转换为屏幕坐标**：将 NDC 坐标映射到屏幕的像素坐标。
+**一句话结论**　把页面里的普通 `<div>` 传给 `new CSS2DObject(div)`，它就拥有了三维坐标（`.position`），能像普通模型一样加进场景树。
 
-手动实现的示例代码：
-```javascript
-// 假设有 mesh, camera 和 renderer
+**关键参数先看清**
+
+- `document.getElementById('tag')`：从 `index.html` 获取现成的标签元素 `<div id="tag">标签内容</div>`。
+- `tag.position.set(50, 0, 50)`：给标签指定三维位置。本例立方体 `mesh` 的中心也在 `(50, 0, 50)`，所以标签正好贴在立方体中心。
+- `tag.center`（默认值 `(0.5, 0.5)`）：控制标签自身的哪个点对齐到三维坐标，默认就是**标签正中心**对齐。
+
+**最小可运行代码**（位于 `index.html` 和 `mesh.js`）
+
+```html
+<!-- index.html -->
+<style>
+  body { overflow: hidden; margin: 0px; }
+  #tag {
+    padding: 10px;
+    color: #fff;
+    background: rgba(25, 25, 25, 0.5);
+    border-radius: 5px;
+    width: 65px;
+  }
+</style>
+<body>
+  <div id="tag">标签内容</div>
+  <script type="module" src="./index.js"></script>
+</body>
+```
+
+```js
+// mesh.js
+import * as THREE from 'three';
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const geometry = new THREE.BoxGeometry(40, 40, 40);
+const material = new THREE.MeshLambertMaterial({ color: 0x00ffff });
+const mesh = new THREE.Mesh(geometry, material);
+mesh.position.set(50, 0, 50);
+
+const group = new THREE.Group();
+group.add(mesh);
+
+const div = document.getElementById('tag');
+const tag = new CSS2DObject(div);
+tag.position.set(50, 0, 50);
+group.add(tag);
+
+export default group;
+```
+
+`CSS2DObject` 继承自 `THREE.Object3D`，它本身在 WebGL 里不可见，只充当一个三维“锚点”。在 `index.js` 中执行 `scene.add(model)` 后，`mesh` 和 `tag` 会一起进入场景树。
+
+**常见写法对比（正反例）**
+
+```js
+// ✅ 本节写法：mesh 和 tag 同级放进 group，各自写世界/组内坐标（适合静态演示）
+mesh.position.set(50, 0, 50);
+tag.position.set(50, 0, 50);
+group.add(mesh, tag);
+
+// ✅ 进阶写法：把 tag 直接挂到 mesh 下，坐标变成相对 mesh 的局部偏移（mesh 动，tag 自动跟着动）
+mesh.add(tag);
+tag.position.set(0, 25, 0); // 立方体高 40，y=25 刚好落在顶面上方一点
+```
+
+```css
+/* ❌ 常见误区（原文档旧写法）：在 CSS 里写 transform 调整对齐点 */
+#tag {
+  transform: translate(-50%, -100%);
+  /* 失效！CSS2DRenderer 每帧会直接覆写元素的内联 style.transform */
+}
+```
+
+```js
+// ✅ 正确改对齐点的方式（Three.js 0.174.0）：修改 tag.center
+tag.center.set(0.5, 1); // 底边中点对齐三维坐标，文字落在坐标正上方
+```
+
+**坑**　在 CSS 里给标签写 `transform: translate(...)` 想微调对齐位置，结果完全没生效。因为 `CSS2DRenderer` 渲染时会直接覆盖 DOM 元素的内联 `style.transform`；想改对齐点，应该调 `tag.center.set(x, y)`（默认已是 `(0.5, 0.5)` 居中，不是左上角）。
+
+---
+
+## 2. 用 `CSS2DRenderer` 叠在画布上并同步渲染
+
+**一句话结论**　`WebGLRenderer` 画 3D 模型，`CSS2DRenderer` 管理覆盖在画布上方的 DOM 层；两者尺寸对齐、每帧用同一台相机一起渲染，标签就能精准跟着 3D 物体走。
+
+**关键参数先看清**
+
+- `css2Renderer.domElement.style.position = 'absolute'` & `top = '0px'`：让标签容器脱离文档流，严丝合缝叠在 `<canvas>` 上方。
+- `css2Renderer.domElement.style.pointerEvents = 'none'`：让鼠标点击和拖动穿透标签层，落到下方的 `canvas` 上（否则 `OrbitControls` 拖不动）。
+- `css2Renderer.setSize(width, height)`：按页面 CSS 像素设置标签层宽高（不需要乘 `devicePixelRatio`）。
+
+**最小可运行代码**（位于 `index.js`）
+
+```js
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// 1）创建并挂载 CSS2DRenderer，叠在 WebGL 画布正上方
+const css2Renderer = new CSS2DRenderer();
+css2Renderer.setSize(width, height);
+document.body.appendChild(css2Renderer.domElement);
+
+css2Renderer.domElement.style.position = 'absolute';
+css2Renderer.domElement.style.top = '0px';
+css2Renderer.domElement.style.pointerEvents = 'none';
+
+// 2）每帧用同一台相机同步渲染 3D 场景和 HTML 标签
+function render() {
+  css2Renderer.render(scene, camera);
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+render();
+
+// 3）窗口缩放时，同步更新两个渲染器尺寸
+window.onresize = () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+  css2Renderer.setSize(width, height);
+};
+```
+
+**画布不在页面左上角怎么办？**
+如果给 `canvas` 加了偏移（比如 `renderer.domElement.style.marginTop = '200px'`），标签层的容器也必须同步偏移（`css2Renderer.domElement.style.top = '200px'`），保证两层始终重合，否则标签和 3D 物体会整体错位。
+
+**坑**　只把 `css2Renderer.domElement` 加进 `body`，忘了设 `position = 'absolute'` 和 `top = '0px'`，结果标签层排在画布下方看不见；或者忘了设 `pointerEvents = 'none'`，导致鼠标被标签层挡住，无法旋转视角。
+
+---
+
+## 了解即可 · `CSS2DRenderer` 替你省了什么？（原理与性能边界）
+
+### 1. 手动投影 vs `CSS2DRenderer`
+
+如果没有 `CSS2DRenderer`，要让 `<div>` 跟着 3D 物体，每帧都得自己把三维世界坐标换算成屏幕 CSS 像素坐标（刚好是上一章「射线拾取：屏幕像素 → NDC → 三维」的**逆过程**）：
+
+```js
 const canvas = renderer.domElement;
 const width = canvas.clientWidth;
 const height = canvas.clientHeight;
 
 const vector = new THREE.Vector3();
-// 1. 获取物体的世界坐标
+// 1. 提取物体的三维世界坐标
 vector.setFromMatrixPosition(mesh.matrixWorld);
-
-// 2. 将世界坐标投影到 NDC 坐标
+// 2. 投影到相机的 NDC 空间（x, y 范围在 [-1, 1]）
 vector.project(camera);
-
-// 3. 将 NDC 坐标转换为屏幕像素坐标
+// 3. 把 NDC 换算成画布内的像素坐标
 const screenX = (vector.x + 1) * width / 2;
 const screenY = (-vector.y + 1) * height / 2;
-
-// 4. 应用到 HTML 元素
-const labelElement = document.getElementById('my-label');
-labelElement.style.position = 'absolute';
-labelElement.style.left = `${screenX}px`;
-labelElement.style.top = `${screenY}px`;
-```
-你还需要在每一帧都重复这个计算来更新标签位置，并处理窗口大小变化等情况，非常麻烦。
-
-### 2️⃣ CSS2DRenderer 如何简化工作？
-
-`CSS2DRenderer` 就是为了自动化上述所有步骤而设计的。它是一个特殊的渲染器，与 `WebGLRenderer` 并行工作：
-*   `WebGLRenderer` 负责在 `<canvas>` 中绘制 3D 场景。
-*   `CSS2DRenderer` 负责管理一个覆盖在 `canvas` 上方的 `<div>` 层，并在这个层里定位你的 HTML 标签。
-
-它为你做好了所有事：
-- **自动坐标转换**：在每一帧自动完成“世界坐标 -> NDC -> 屏幕坐标”的转换。
-- **自动更新 DOM**：自动更新 HTML 标签元素的 CSS `transform` 属性来定位。
-- **场景集成**：你可以像操作普通 3D 物体一样，将 HTML 标签（包装在 `CSS2DObject` 中）添加到场景图（`scene`）或任何 `Object3D` 对象中。
-
-### 3️⃣ 完整实践指南
-
-下面是一个完整的示例，展示如何在一个场景中为一个立方体添加一个 HTML 标签。我将为你补充 `index.html` 和 `index.js` 的完整代码。
-
-#### **步骤 1: 准备 HTML 文件 (`index.html`)**
-
-我们需要一个容器来放置渲染结果，以及一个用作标签的 `div` 元素。
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Three.js CSS2DRenderer 示例</title>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        #container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-        canvas { display: block; }
-        /* 标签的样式 */
-        .label {
-            color: #FFF;
-            font-family: sans-serif;
-            padding: 5px 10px;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 4px;
-            /* 通过 transform 实现居中，让标签的中心点和模型位置对齐 */
-            transform: translate(-50%, -100%); 
-        }
-    </style>
-</head>
-<body>
-    <!-- WebGL 和 CSS2D 的渲染容器 -->
-    <div id="container"></div>
-
-    <!-- 这是我们将要用作标签的 HTML 元素，初始时可以隐藏 -->
-    <div id="tag" class="label" style="position: absolute; display: none;">
-        这是一个立方体<br>
-        (BoxGeometry)
-    </div>
-
-    <script type="module" src="/index.js"></script>
-</body>
-</html>
 ```
 
-#### **步骤 2: 创建 3D 物体和标签 (`mesh.js`)**
+`CSS2DRenderer` 就是把这套「世界坐标 → NDC → 屏幕像素 → 更新 DOM `transform`」的脏活全自动包办了。
 
-将标签作为子对象添加到 `mesh` 上，并设置其相对位置。
+### 2. 性能与交互边界
 
-```javascript
-import * as THREE from 'three';
-// 引入CSS2DObject
-import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+- **数量上限**：`CSS2DRenderer` 适合几十到几百个标签。如果场景里有成千上万个标注，大量 DOM 节点会拖慢页面，这时应改用基于 Canvas 纹理的 `Sprite` 或着色器文字。
+- **标签自身需要点击时**：外层容器保持 `pointer-events: none`，单独给需要交互的标签元素加上 `pointer-events: auto`。
 
-// 创建一个立方体
-const geometry = new THREE.BoxGeometry(40, 40, 40);
-const material = new THREE.MeshLambertMaterial({
-    color: 0x00ffff,
-});
-const mesh = new THREE.Mesh(geometry, material);
-mesh.position.set(0, 20, 0); // 将立方体放在地面上
+---
 
-// --- 创建标签 ---
-// 1. 获取 HTML 元素
-// 注意：此时 document 可能还未完全加载，推荐在主JS文件中获取DOM
-const div = document.createElement('div');
-div.className = 'label';
-div.textContent = '这是一个立方体';
+## 速记
 
-// 2. 将 HTML 元素包装成 CSS2DObject
-const label = new CSS2DObject(div);
+| 做什么                           | 看哪一行                                                     |
+| -------------------------------- | ------------------------------------------------------------ |
+| 把 HTML 元素包装成 3D 标签       | `const tag = new CSS2DObject(div)`                           |
+| 调整标签自身对齐点（默认正中心） | `tag.center.set(0.5, 1)`（不要用 CSS `transform`）           |
+| 让标签层叠在画布上且不挡鼠标     | `position = 'absolute'`、`top = '0px'`、`pointerEvents = 'none'` |
+| 每帧让标签跟随相机投影           | `css2Renderer.render(scene, camera)`                         |
+| 窗口缩放同步对齐                 | `css2Renderer.setSize(width, height)`                        |
 
-// 3. 将标签作为子元素添加到网格模型上
-mesh.add(label);
+## 自测
 
-// 4. 设置标签的相对位置
-// 默认位置是 (0,0,0)，在物体中心。我们把它移到物体正上方。
-// 因为立方体高度是40，所以中心点在y=20处，我们再往上移动一点
-label.position.set(0, 25, 0);
+1. 在 Three.js `0.174.0` 中，给 `<div id="tag">` 写 CSS `transform: translate(-50%, -100%)` 想让标签底部对齐物体，为什么不会生效？应该怎么改？
+2. 如果把 `renderer.domElement.style.marginTop = '200px'` 往下挪了 200px，但没改 `css2Renderer.domElement.style.top`，画面会出现什么现象？
+3. 本节 `mesh.js` 里 `tag` 和 `mesh` 是同级放进 `group` 的；如果之后要让立方体移动，怎样改挂载关系才能让标签自动跟着走？
+4. 手动把 3D 坐标转成屏幕坐标时调用的 `vector.project(camera)`，和上一章射线拾取里的 `unproject(camera)` 是什么关系？
 
-export default mesh;
-```
-**改进点**：通过 `mesh.add(label)`，标签就会自动跟随 `mesh` 的移动、旋转和缩放。`label.position` 是相对于 `mesh` 的局部坐标，这样管理更方便。
-
-#### **步骤 3: 设置主场景和渲染器 (`index.js`)**
-
-这里我为你补全了 `index.js` 的代码，它负责初始化整个三维世界和两个渲染器。
-
-```javascript
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-// 引入 CSS2DRenderer
-import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import cube from './mesh.js'; // 我们称之为 cube 更贴切
-
-// 1. 场景
-const scene = new THREE.Scene();
-scene.add(cube);
-
-// 添加地面
-const planeGeometry = new THREE.PlaneGeometry(200, 200);
-const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
-const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-plane.rotation.x = -Math.PI / 2;
-scene.add(plane);
+<details>
+<summary>查看答案</summary>
 
 
-// 添加一些辅助元素
-const axesHelper = new THREE.AxesHelper(100);
-scene.add(axesHelper);
+1. `CSS2DRenderer` 每帧会直接覆写标签元素的内联 `style.transform`，盖掉 CSS 类里的 `transform`。正确做法是在 JS 里设置 `tag.center.set(0.5, 1)`。
+2. 标签层依然停在页面顶部 `0px` 处，而 3D 画布下移了 200px，导致标签整体向上偏离立方体 200px。需要同步设置 `css2Renderer.domElement.style.top = '200px'`。
+3. 改成 `mesh.add(tag)`，并把 `tag.position` 改成相对 `mesh` 中心的局部坐标（如 `(0, 0, 0)` 或顶部的 `(0, 25, 0)`）。
+4. 互为逆过程：`project(camera)` 是把三维世界坐标投影成二维屏幕 NDC（用来算标签在哪显示）；`unproject(camera)` 是把点击的二维 NDC 反投影回三维世界（用来算鼠标射线方向）。
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-directionalLight.position.set(100, 60, 50);
-scene.add(directionalLight);
-
-// 2. 相机
-const width = window.innerWidth;
-const height = window.innerHeight;
-const camera = new THREE.PerspectiveCamera(45, width / height, 1, 2000);
-camera.position.set(150, 100, 150);
-camera.lookAt(scene.position);
-
-// 3. WebGL 渲染器 (用于 3D 场景)
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(width, height);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x222222);
-
-// 4. CSS2D 渲染器 (用于 HTML 标签)
-const css2DRenderer = new CSS2DRenderer();
-css2DRenderer.setSize(width, height);
-css2DRenderer.domElement.style.position = 'absolute';
-css2DRenderer.domElement.style.top = '0px';
-css2DRenderer.domElement.style.pointerEvents = 'none'; // 避免遮挡鼠标对3D场景的操作
-
-// 5. 将渲染器挂载到页面
-const container = document.getElementById('container');
-container.appendChild(renderer.domElement);
-container.appendChild(css2DRenderer.domElement);
-
-// 6. 控制器
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.addEventListener('change', render);
-
-// 7. 渲染循环
-function render() {
-    // WebGLRenderer 和 CSS2DRenderer 都需要在每一帧中渲染
-    renderer.render(scene, camera);
-    css2DRenderer.render(scene, camera);
-}
-
-// 首次渲染
-render();
-
-// 监听窗口变化，自适应调整
-window.onresize = function () {
-    const newWidth = window.innerWidth;
-    const newHeight = window.innerHeight;
-    camera.aspect = newWidth / newHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(newWidth, newHeight);
-    css2DRenderer.setSize(newWidth, newHeight);
-    render();
-};
-```
-
-### 4️⃣ 核心类回顾
-
--   `CSS2DRenderer`:
-    -   一个独立的渲染器，管理 HTML 元素的 2D 渲染层。
-    -   它的 `.domElement` 是一个 `<div>`，必须被添加到你的页面容器中，并覆盖在 `WebGLRenderer` 的 `canvas` 之上。
-    -   `.setSize()` 方法需要与 `WebGLRenderer` 的尺寸同步。
-
--   `CSS2DObject`:
-    -   继承自 `THREE.Object3D`，因此它拥有 `.position`, `.rotation`, `.scale` 等属性，可以被添加到场景图的任何节点中。
-    -   它的构造函数接收一个 HTML DOM 元素作为参数：`new CSS2DObject(myDiv)`。
-    -   这个对象本身在 3D 场景中不可见，它只是一个“锚点”，`CSS2DRenderer` 用它的位置来定位对应的 HTML 元素。
-
-### 5️⃣ 技巧与注意事项
-
--   **标签居中**：默认情况下，HTML 元素的左上角会与 3D 坐标点对齐。如果你希望标签的中心与 3D 点对齐，可以使用 CSS 的 `transform`。例如，`transform: translate(-50%, -50%)` 会让标签完全居中。`transform: translate(-50%, -100%)` 则常用于将标签放在物体正上方，使其底部中心对齐。
--   **性能**：`CSS2DRenderer` 非常适合用于少量（几十到几百个）的标签。但如果标签数量非常多（成千上万），大量的 DOM 元素可能会导致页面性能下降。在这种情况下，需要考虑使用基于纹理的文本渲染方案。
--   **鼠标事件**：`CSS2DRenderer` 的 `div` 层会覆盖在 `canvas` 上。为了不影响 `OrbitControls` 或其他对 `canvas` 的鼠标操作，通常需要设置 `pointer-events: none;`。如果你的标签需要交互（如点击），则需要更复杂的事件处理策略，比如在标签上启用 `pointer-events: auto;`，并处理事件冒泡。
+</details>
